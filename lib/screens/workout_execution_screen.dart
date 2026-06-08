@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/workout.dart';
 import '../models/workout_session.dart';
 import '../models/exercise_set.dart';
+import '../models/exercise.dart';
 import '../providers/workout_provider.dart';
 
 class WorkoutExecutionScreen extends ConsumerStatefulWidget {
@@ -16,6 +17,7 @@ class WorkoutExecutionScreen extends ConsumerStatefulWidget {
 
 class _WorkoutExecutionScreenState extends ConsumerState<WorkoutExecutionScreen> {
   final Map<int, List<ExerciseSet>> _setsByExercise = {};
+  final List<Exercise> _dynamicExercises = []; // Exercícios adicionados na hora
   bool _initialized = false;
 
   @override
@@ -29,6 +31,9 @@ class _WorkoutExecutionScreenState extends ConsumerState<WorkoutExecutionScreen>
 
   void _loadLastSessionData() {
     final sessions = ref.read(sessionListProvider);
+    _dynamicExercises.clear();
+    _dynamicExercises.addAll(widget.workout.exercises);
+
     // Encontrar a última sessão deste treino específico
     final lastSession = sessions.firstWhere(
       (s) => s.workoutId == widget.workout.id,
@@ -40,25 +45,99 @@ class _WorkoutExecutionScreenState extends ConsumerState<WorkoutExecutionScreen>
     );
 
     setState(() {
-      for (var exercise in widget.workout.exercises) {
+      for (var exercise in _dynamicExercises) {
         // Buscar séries desta última sessão para este exercício
         final previousSets = lastSession.sets.where((s) => s.exerciseId == exercise.id).toList();
         
         if (previousSets.isNotEmpty) {
-          // Se houver histórico, preenchemos com os valores anteriores
           _setsByExercise[exercise.id!] = previousSets.map((s) => ExerciseSet(
             reps: s.reps,
             weight: s.weight,
             exerciseId: exercise.id,
           )).toList();
         } else {
-          // Se não houver, começa com uma série padrão
           _setsByExercise[exercise.id!] = [
             ExerciseSet(reps: 10, weight: 0, exerciseId: exercise.id),
           ];
         }
       }
     });
+  }
+
+  void _addNewExercise(Exercise exercise) {
+    if (_setsByExercise.containsKey(exercise.id)) return;
+
+    setState(() {
+      _dynamicExercises.add(exercise);
+      _setsByExercise[exercise.id!] = [
+        ExerciseSet(reps: 10, weight: 0, exerciseId: exercise.id),
+      ];
+    });
+
+    // Opcional: Salvar no treino original para sempre
+    _confirmSaveToWorkout(exercise);
+  }
+
+  void _confirmSaveToWorkout(Exercise exercise) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Salvar na Rotina?'),
+        content: Text('Deseja adicionar "${exercise.name}" permanentemente a este treino para as próximas vezes?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Apenas Hoje')),
+          ElevatedButton(
+            onPressed: () {
+              ref.read(workoutListProvider.notifier).addExerciseToWorkout(widget.workout.id!, exercise.id!);
+              Navigator.pop(context);
+            },
+            child: const Text('Salvar Sempre'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showAddExerciseDialog() {
+    final exerciseListAsync = ref.watch(exerciseListProvider);
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (context) => DraggableScrollableSheet(
+        expand: false,
+        initialChildSize: 0.7,
+        builder: (context, scrollController) => Column(
+          children: [
+            const Padding(
+              padding: EdgeInsets.all(16.0),
+              child: Text('Adicionar Exercício', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            ),
+            Expanded(
+              child: exerciseListAsync.when(
+                data: (exercises) => ListView.builder(
+                  controller: scrollController,
+                  itemCount: exercises.length,
+                  itemBuilder: (context, index) {
+                    final ex = exercises[index];
+                    return ListTile(
+                      title: Text(ex.name),
+                      subtitle: Text(ex.category ?? ''),
+                      onTap: () {
+                        _addNewExercise(ex);
+                        Navigator.pop(context);
+                      },
+                    );
+                  },
+                ),
+                loading: () => const Center(child: CircularProgressIndicator()),
+                error: (e, _) => Center(child: Text('Erro: $e')),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   void _addSet(int exerciseId) {
@@ -112,101 +191,118 @@ class _WorkoutExecutionScreenState extends ConsumerState<WorkoutExecutionScreen>
           ),
         ],
       ),
-      body: widget.workout.exercises.isEmpty
-          ? const Center(child: Text('Este treino não tem exercícios.'))
-          : ListView.builder(
-              itemCount: widget.workout.exercises.length,
-              itemBuilder: (context, index) {
-                final exercise = widget.workout.exercises[index];
-                final sets = _setsByExercise[exercise.id!] ?? [];
+      body: Column(
+        children: [
+          Expanded(
+            child: _dynamicExercises.isEmpty
+                ? const Center(child: Text('Este treino não tem exercícios.'))
+                : ListView.builder(
+                    itemCount: _dynamicExercises.length,
+                    itemBuilder: (context, index) {
+                      final exercise = _dynamicExercises[index];
+                      final sets = _setsByExercise[exercise.id!] ?? [];
 
-                return Card(
-                  margin: const EdgeInsets.all(8.0),
-                  child: Padding(
-                    padding: const EdgeInsets.all(8.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          exercise.name,
-                          style: Theme.of(context).textTheme.titleLarge,
-                        ),
-                        const SizedBox(height: 8),
-                        ...sets.asMap().entries.map((entry) {
-                          int setIndex = entry.key;
-                          ExerciseSet set = entry.value;
-                          return Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 4.0),
-                            child: Row(
-                              children: [
-                                CircleAvatar(
-                                  radius: 12,
-                                  child: Text('${setIndex + 1}', style: const TextStyle(fontSize: 12)),
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: TextFormField(
-                                    initialValue: set.reps.toString(),
-                                    keyboardType: TextInputType.number,
-                                    decoration: const InputDecoration(
-                                      labelText: 'Reps',
-                                      isDense: true,
-                                      border: OutlineInputBorder(),
-                                    ),
-                                    onChanged: (val) {
-                                      sets[setIndex] = ExerciseSet(
-                                        reps: int.tryParse(val) ?? 0,
-                                        weight: sets[setIndex].weight,
-                                        exerciseId: exercise.id,
-                                      );
-                                    },
+                      return Card(
+                        margin: const EdgeInsets.all(8.0),
+                        child: Padding(
+                          padding: const EdgeInsets.all(8.0),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                exercise.name,
+                                style: Theme.of(context).textTheme.titleLarge,
+                              ),
+                              const SizedBox(height: 8),
+                              ...sets.asMap().entries.map((entry) {
+                                int setIndex = entry.key;
+                                ExerciseSet set = entry.value;
+                                return Padding(
+                                  padding: const EdgeInsets.symmetric(vertical: 4.0),
+                                  child: Row(
+                                    children: [
+                                      CircleAvatar(
+                                        radius: 12,
+                                        child: Text('${setIndex + 1}', style: const TextStyle(fontSize: 12)),
+                                      ),
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                        child: TextFormField(
+                                          initialValue: set.reps.toString(),
+                                          keyboardType: TextInputType.number,
+                                          decoration: const InputDecoration(
+                                            labelText: 'Reps',
+                                            isDense: true,
+                                            border: OutlineInputBorder(),
+                                          ),
+                                          onChanged: (val) {
+                                            sets[setIndex] = ExerciseSet(
+                                              reps: int.tryParse(val) ?? 0,
+                                              weight: sets[setIndex].weight,
+                                              exerciseId: exercise.id,
+                                            );
+                                          },
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: TextFormField(
+                                          initialValue: set.weight.toString(),
+                                          keyboardType: TextInputType.number,
+                                          decoration: const InputDecoration(
+                                            labelText: 'Peso (kg)',
+                                            isDense: true,
+                                            border: OutlineInputBorder(),
+                                          ),
+                                          onChanged: (val) {
+                                            sets[setIndex] = ExerciseSet(
+                                              reps: sets[setIndex].reps,
+                                              weight: double.tryParse(val) ?? 0.0,
+                                              exerciseId: exercise.id,
+                                            );
+                                          },
+                                        ),
+                                      ),
+                                      IconButton(
+                                        icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
+                                        onPressed: () {
+                                          setState(() {
+                                            sets.removeAt(setIndex);
+                                          });
+                                        },
+                                      ),
+                                    ],
                                   ),
+                                );
+                              }),
+                              Align(
+                                alignment: Alignment.centerRight,
+                                child: TextButton.icon(
+                                  onPressed: () => _addSet(exercise.id!),
+                                  icon: const Icon(Icons.add),
+                                  label: const Text('Adicionar Série'),
                                 ),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: TextFormField(
-                                    initialValue: set.weight.toString(),
-                                    keyboardType: TextInputType.number,
-                                    decoration: const InputDecoration(
-                                      labelText: 'Peso (kg)',
-                                      isDense: true,
-                                      border: OutlineInputBorder(),
-                                    ),
-                                    onChanged: (val) {
-                                      sets[setIndex] = ExerciseSet(
-                                        reps: sets[setIndex].reps,
-                                        weight: double.tryParse(val) ?? 0.0,
-                                        exerciseId: exercise.id,
-                                      );
-                                    },
-                                  ),
-                                ),
-                                IconButton(
-                                  icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
-                                  onPressed: () {
-                                    setState(() {
-                                      sets.removeAt(setIndex);
-                                    });
-                                  },
-                                ),
-                              ],
-                            ),
-                          );
-                        }),
-                        Align(
-                          alignment: Alignment.centerRight,
-                          child: TextButton.icon(
-                            onPressed: () => _addSet(exercise.id!),
-                            icon: const Icon(Icons.add),
-                            label: const Text('Adicionar Série'),
+                              ),
+                            ],
                           ),
                         ),
-                      ],
-                    ),
+                      );
+                    },
                   ),
-                );
-              },
+          ),
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: ElevatedButton.icon(
+              onPressed: _showAddExerciseDialog,
+              icon: const Icon(Icons.add_circle_outline),
+              label: const Text('Adicionar Novo Exercício Hoje'),
+              style: ElevatedButton.styleFrom(
+                minimumSize: const Size.fromHeight(50),
+              ),
             ),
+          ),
+        ],
+      ),
     );
   }
 }
