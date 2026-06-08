@@ -23,14 +23,53 @@ class WorkoutListNotifier extends Notifier<List<Workout>> {
     await db.createWorkout(workout);
     await _load();
   }
+
+  Future<void> deleteWorkout(int id) async {
+    final db = ref.read(databaseProvider);
+    await db.deleteWorkout(id);
+    await _load();
+  }
+
+  Future<void> addExerciseToWorkout(int workoutId, int exerciseId) async {
+    final db = ref.read(databaseProvider);
+    await db.addExerciseToWorkout(workoutId, exerciseId);
+    await _load();
+  }
+
+  Future<void> removeExerciseFromWorkout(int workoutId, int exerciseId) async {
+    final db = ref.read(databaseProvider);
+    await db.removeExerciseFromWorkout(workoutId, exerciseId);
+    await _load();
+  }
 }
 
 final workoutListProvider = NotifierProvider<WorkoutListNotifier, List<Workout>>(WorkoutListNotifier.new);
 
-final exerciseListProvider = FutureProvider<List<Exercise>>((ref) async {
-  final db = ref.watch(databaseProvider);
-  return await db.getAllExercises();
-});
+class ExerciseListNotifier extends Notifier<AsyncValue<List<Exercise>>> {
+  @override
+  AsyncValue<List<Exercise>> build() {
+    _load();
+    return const AsyncValue.loading();
+  }
+
+  Future<void> _load() async {
+    final db = ref.read(databaseProvider);
+    try {
+      final list = await db.getAllExercises();
+      state = AsyncValue.data(list);
+    } catch (e, st) {
+      state = AsyncValue.error(e, st);
+    }
+  }
+
+  Future<void> addExercise(Exercise exercise) async {
+    final db = ref.read(databaseProvider);
+    await db.createExercise(exercise);
+    await _load();
+  }
+}
+
+final exerciseListProvider = NotifierProvider<ExerciseListNotifier, AsyncValue<List<Exercise>>>(ExerciseListNotifier.new);
 
 class SessionListNotifier extends Notifier<List<WorkoutSession>> {
   @override

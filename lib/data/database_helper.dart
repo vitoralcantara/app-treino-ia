@@ -111,6 +111,11 @@ class DatabaseHelper {
     return result.map((json) => Exercise.fromJson(json)).toList();
   }
 
+  Future<int> createExercise(Exercise exercise) async {
+    final db = await instance.database;
+    return await db.insert('exercises', exercise.toJson());
+  }
+
   // --- Workout Operations ---
   Future<int> createWorkout(Workout workout) async {
     final db = await instance.database;
@@ -120,7 +125,6 @@ class DatabaseHelper {
       final exercise = workout.exercises[i];
       int exerciseId = exercise.id ?? 0;
       
-      // If exercise doesn't have an id, it might be a new one (though usually we select from list)
       if (exerciseId == 0) {
          exerciseId = await db.insert('exercises', exercise.toJson());
       }
@@ -132,6 +136,39 @@ class DatabaseHelper {
       });
     }
     return id;
+  }
+
+  Future<void> addExerciseToWorkout(int workoutId, int exerciseId) async {
+    final db = await instance.database;
+    
+    // Get current max position
+    final result = await db.rawQuery(
+      'SELECT MAX(position) as max_pos FROM workout_exercises WHERE workout_id = ?',
+      [workoutId],
+    );
+    int nextPos = (result.first['max_pos'] as int? ?? -1) + 1;
+
+    await db.insert('workout_exercises', {
+      'workout_id': workoutId,
+      'exercise_id': exerciseId,
+      'position': nextPos,
+    });
+  }
+
+  Future<void> removeExerciseFromWorkout(int workoutId, int exerciseId) async {
+    final db = await instance.database;
+    await db.delete(
+      'workout_exercises',
+      where: 'workout_id = ? AND exercise_id = ?',
+      whereArgs: [workoutId, exerciseId],
+    );
+  }
+
+  Future<void> deleteWorkout(int id) async {
+    final db = await instance.database;
+    await db.delete('workouts', where: 'id = ?', whereArgs: [id]);
+    // Cascade delete handles workout_exercises if configured correctly, 
+    // but sqflite needs manual delete or pragma foreign_keys = ON
   }
 
   Future<List<Workout>> getAllWorkouts() async {

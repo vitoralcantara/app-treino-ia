@@ -5,6 +5,7 @@ import '../models/workout.dart';
 import '../services/ai_prompt_helper.dart';
 import '../providers/workout_provider.dart';
 import 'workout_execution_screen.dart';
+import 'workout_details_screen.dart';
 import 'ai_screen.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
@@ -87,7 +88,23 @@ class WorkoutTab extends ConsumerWidget {
                       );
                     },
                   ),
-                  trailing: const Icon(Icons.play_arrow),
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.edit),
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => WorkoutDetailsScreen(workoutId: workout.id!),
+                            ),
+                          );
+                        },
+                      ),
+                      const Icon(Icons.play_arrow),
+                    ],
+                  ),
                   onTap: () {
                     Navigator.push(
                       context,
