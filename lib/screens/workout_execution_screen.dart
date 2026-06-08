@@ -99,8 +99,6 @@ class _WorkoutExecutionScreenState extends ConsumerState<WorkoutExecutionScreen>
   }
 
   void _showAddExerciseDialog() {
-    final exerciseListAsync = ref.watch(exerciseListProvider);
-
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -114,24 +112,29 @@ class _WorkoutExecutionScreenState extends ConsumerState<WorkoutExecutionScreen>
               child: Text('Adicionar Exercício', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             ),
             Expanded(
-              child: exerciseListAsync.when(
-                data: (exercises) => ListView.builder(
-                  controller: scrollController,
-                  itemCount: exercises.length,
-                  itemBuilder: (context, index) {
-                    final ex = exercises[index];
-                    return ListTile(
-                      title: Text(ex.name),
-                      subtitle: Text(ex.category ?? ''),
-                      onTap: () {
-                        _addNewExercise(ex);
-                        Navigator.pop(context);
+              child: Consumer(
+                builder: (context, ref, child) {
+                  final exerciseListAsync = ref.watch(exerciseListProvider);
+                  return exerciseListAsync.when(
+                    data: (exercises) => ListView.builder(
+                      controller: scrollController,
+                      itemCount: exercises.length,
+                      itemBuilder: (context, index) {
+                        final ex = exercises[index];
+                        return ListTile(
+                          title: Text(ex.name),
+                          subtitle: Text(ex.category ?? ''),
+                          onTap: () {
+                            _addNewExercise(ex);
+                            Navigator.pop(context);
+                          },
+                        );
                       },
-                    );
-                  },
-                ),
-                loading: () => const Center(child: CircularProgressIndicator()),
-                error: (e, _) => Center(child: Text('Erro: $e')),
+                    ),
+                    loading: () => const Center(child: CircularProgressIndicator()),
+                    error: (e, _) => Center(child: Text('Erro: $e')),
+                  );
+                },
               ),
             ),
           ],

@@ -13,7 +13,6 @@ class WorkoutDetailsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final workouts = ref.watch(workoutListProvider);
     final workout = workouts.firstWhere((w) => w.id == workoutId);
-    final exerciseListAsync = ref.watch(exerciseListProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -85,7 +84,7 @@ class WorkoutDetailsScreen extends ConsumerWidget {
             onPressed: () {
               ref.read(workoutListProvider.notifier).deleteWorkout(workout.id!);
               Navigator.pop(context); // close dialog
-              Navigator.pop(context); // close screen
+              if (context.mounted) Navigator.pop(context); // close screen
             },
             child: const Text('Excluir', style: TextStyle(color: Colors.red)),
           ),
@@ -95,60 +94,60 @@ class WorkoutDetailsScreen extends ConsumerWidget {
   }
 
   void _showAddExerciseDialog(BuildContext context, WidgetRef ref) {
-    final exerciseListAsync = ref.watch(exerciseListProvider);
-    final searchController = TextEditingController();
-
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setModalState) => DraggableScrollableSheet(
-          expand: false,
-          initialChildSize: 0.7,
-          maxChildSize: 0.9,
-          builder: (context, scrollController) => Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text('Escolha um Exercício', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-                    IconButton(onPressed: () => Navigator.pop(context), icon: const Icon(Icons.close)),
-                  ],
-                ),
-                const SizedBox(height: 10),
-                exerciseListAsync.when(
-                  data: (exercises) => Expanded(
-                    child: ListView.builder(
-                      controller: scrollController,
-                      itemCount: exercises.length + 1,
-                      itemBuilder: (context, index) {
-                        if (index == exercises.length) {
+      builder: (context) => DraggableScrollableSheet(
+        expand: false,
+        initialChildSize: 0.7,
+        maxChildSize: 0.9,
+        builder: (context, scrollController) => Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text('Escolha um Exercício', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                  IconButton(onPressed: () => Navigator.pop(context), icon: const Icon(Icons.close)),
+                ],
+              ),
+              const SizedBox(height: 10),
+              Expanded(
+                child: Consumer(
+                  builder: (context, ref, child) {
+                    final exerciseListAsync = ref.watch(exerciseListProvider);
+                    return exerciseListAsync.when(
+                      data: (exercises) => ListView.builder(
+                        controller: scrollController,
+                        itemCount: exercises.length + 1,
+                        itemBuilder: (context, index) {
+                          if (index == exercises.length) {
+                            return ListTile(
+                              leading: const Icon(Icons.add_circle, color: Colors.green),
+                              title: const Text('Criar Novo Exercício'),
+                              onTap: () => _showCreateCustomExerciseDialog(context, ref),
+                            );
+                          }
+                          final exercise = exercises[index];
                           return ListTile(
-                            leading: const Icon(Icons.add_circle, color: Colors.green),
-                            title: const Text('Criar Novo Exercício'),
-                            onTap: () => _showCreateCustomExerciseDialog(context, ref),
+                            title: Text(exercise.name),
+                            subtitle: Text(exercise.category ?? ''),
+                            trailing: const Icon(Icons.add),
+                            onTap: () {
+                              ref.read(workoutListProvider.notifier).addExerciseToWorkout(workoutId, exercise.id!);
+                              Navigator.pop(context);
+                            },
                           );
-                        }
-                        final exercise = exercises[index];
-                        return ListTile(
-                          title: Text(exercise.name),
-                          subtitle: Text(exercise.category ?? ''),
-                          trailing: const Icon(Icons.add),
-                          onTap: () {
-                            ref.read(workoutListProvider.notifier).addExerciseToWorkout(workoutId, exercise.id!);
-                            Navigator.pop(context);
-                          },
-                        );
-                      },
-                    ),
-                  ),
-                  loading: () => const Center(child: CircularProgressIndicator()),
-                  error: (e, _) => Center(child: Text('Erro: $e')),
+                        },
+                      ),
+                      loading: () => const Center(child: CircularProgressIndicator()),
+                      error: (e, _) => Center(child: Text('Erro: $e')),
+                    );
+                  },
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),
