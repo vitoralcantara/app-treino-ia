@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter/services.dart';
 import '../models/workout.dart';
+import '../services/ai_prompt_helper.dart';
 import '../providers/workout_provider.dart';
 import 'workout_execution_screen.dart';
 import 'ai_screen.dart';
@@ -74,6 +76,17 @@ class WorkoutTab extends ConsumerWidget {
                 return ListTile(
                   title: Text(workout.name),
                   subtitle: Text('${workout.exercises.length} exercícios'),
+                  leading: IconButton(
+                    icon: const Icon(Icons.share, size: 20),
+                    tooltip: 'Exportar para IA',
+                    onPressed: () {
+                      final prompt = AiPromptHelper.generateExportWorkoutPrompt(workout);
+                      Clipboard.setData(ClipboardData(text: prompt));
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Treino copiado para levar ao Gemini!')),
+                      );
+                    },
+                  ),
                   trailing: const Icon(Icons.play_arrow),
                   onTap: () {
                     Navigator.push(
@@ -137,19 +150,39 @@ class HistoryTab extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final sessions = ref.watch(sessionListProvider);
 
-    return sessions.isEmpty
-        ? const Center(child: Text('Nenhum histórico registrado.'))
-        : ListView.builder(
-            itemCount: sessions.length,
-            itemBuilder: (context, index) {
-              final session = sessions[index];
-              return ListTile(
-                title: Text(session.workoutName),
-                subtitle: Text(
-                  '${session.date.day}/${session.date.month}/${session.date.year} - ${session.sets.length} séries',
+    return Scaffold(
+      appBar: sessions.isEmpty
+          ? null
+          : AppBar(
+              title: const Text('Histórico', style: TextStyle(fontSize: 16)),
+              actions: [
+                TextButton.icon(
+                  onPressed: () {
+                    final prompt = AiPromptHelper.generateExportHistoryPrompt(sessions);
+                    Clipboard.setData(ClipboardData(text: prompt));
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Histórico completo copiado para o Gemini!')),
+                    );
+                  },
+                  icon: const Icon(Icons.psychology),
+                  label: const Text('Exportar para IA'),
                 ),
-              );
-            },
-          );
+              ],
+            ),
+      body: sessions.isEmpty
+          ? const Center(child: Text('Nenhum histórico registrado.'))
+          : ListView.builder(
+              itemCount: sessions.length,
+              itemBuilder: (context, index) {
+                final session = sessions[index];
+                return ListTile(
+                  title: Text(session.workoutName),
+                  subtitle: Text(
+                    '${session.date.day}/${session.date.month}/${session.date.year} - ${session.sets.length} séries',
+                  ),
+                );
+              },
+            ),
+    );
   }
 }
