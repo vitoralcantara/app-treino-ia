@@ -18,8 +18,8 @@ class ExerciseSet {
   factory ExerciseSet.fromJson(Map<String, dynamic> json) {
     return ExerciseSet(
       id: json['id'] as int?,
-      exerciseId: json['exerciseId'] as int?,
-      workoutSessionId: json['workoutSessionId'] as int?,
+      exerciseId: (json['exerciseId'] ?? json['exercise_id']) as int?,
+      workoutSessionId: (json['workoutSessionId'] ?? json['session_id']) as int?,
       reps: json['reps'] as int,
       weight: (json['weight'] as num).toDouble(),
       timestamp: json['timestamp'] != null

@@ -16,19 +16,60 @@ class WorkoutExecutionScreen extends ConsumerStatefulWidget {
 
 class _WorkoutExecutionScreenState extends ConsumerState<WorkoutExecutionScreen> {
   final Map<int, List<ExerciseSet>> _setsByExercise = {};
+  bool _initialized = false;
 
   @override
-  void initState() {
-    super.initState();
-    for (var exercise in widget.workout.exercises) {
-      _setsByExercise[exercise.id!] = [];
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_initialized) {
+      _loadLastSessionData();
+      _initialized = true;
     }
+  }
+
+  void _loadLastSessionData() {
+    final sessions = ref.read(sessionListProvider);
+    // Encontrar a última sessão deste treino específico
+    final lastSession = sessions.firstWhere(
+      (s) => s.workoutId == widget.workout.id,
+      orElse: () => WorkoutSession(
+        workoutId: widget.workout.id!,
+        workoutName: widget.workout.name,
+        date: DateTime.now(),
+      ),
+    );
+
+    setState(() {
+      for (var exercise in widget.workout.exercises) {
+        // Buscar séries desta última sessão para este exercício
+        final previousSets = lastSession.sets.where((s) => s.exerciseId == exercise.id).toList();
+        
+        if (previousSets.isNotEmpty) {
+          // Se houver histórico, preenchemos com os valores anteriores
+          _setsByExercise[exercise.id!] = previousSets.map((s) => ExerciseSet(
+            reps: s.reps,
+            weight: s.weight,
+            exerciseId: exercise.id,
+          )).toList();
+        } else {
+          // Se não houver, começa com uma série padrão
+          _setsByExercise[exercise.id!] = [
+            ExerciseSet(reps: 10, weight: 0, exerciseId: exercise.id),
+          ];
+        }
+      }
+    });
   }
 
   void _addSet(int exerciseId) {
     setState(() {
+      final lastSet = _setsByExercise[exerciseId]!.last;
       _setsByExercise[exerciseId]!.add(
-        ExerciseSet(reps: 10, weight: 0, exerciseId: exerciseId),
+        ExerciseSet(
+          reps: lastSet.reps,
+          weight: lastSet.weight,
+          exerciseId: exerciseId,
+        ),
       );
     });
   }
@@ -90,54 +131,75 @@ class _WorkoutExecutionScreenState extends ConsumerState<WorkoutExecutionScreen>
                           exercise.name,
                           style: Theme.of(context).textTheme.titleLarge,
                         ),
+                        const SizedBox(height: 8),
                         ...sets.asMap().entries.map((entry) {
                           int setIndex = entry.key;
                           ExerciseSet set = entry.value;
-                          return Row(
-                            children: [
-                              Text('Série ${setIndex + 1}: '),
-                              Expanded(
-                                child: TextField(
-                                  keyboardType: TextInputType.number,
-                                  decoration: const InputDecoration(labelText: 'Reps'),
-                                  onChanged: (val) {
-                                    sets[setIndex] = ExerciseSet(
-                                      reps: int.tryParse(val) ?? 0,
-                                      weight: set.weight,
-                                      exerciseId: exercise.id,
-                                    );
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 4.0),
+                            child: Row(
+                              children: [
+                                CircleAvatar(
+                                  radius: 12,
+                                  child: Text('${setIndex + 1}', style: const TextStyle(fontSize: 12)),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: TextFormField(
+                                    initialValue: set.reps.toString(),
+                                    keyboardType: TextInputType.number,
+                                    decoration: const InputDecoration(
+                                      labelText: 'Reps',
+                                      isDense: true,
+                                      border: OutlineInputBorder(),
+                                    ),
+                                    onChanged: (val) {
+                                      sets[setIndex] = ExerciseSet(
+                                        reps: int.tryParse(val) ?? 0,
+                                        weight: sets[setIndex].weight,
+                                        exerciseId: exercise.id,
+                                      );
+                                    },
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: TextFormField(
+                                    initialValue: set.weight.toString(),
+                                    keyboardType: TextInputType.number,
+                                    decoration: const InputDecoration(
+                                      labelText: 'Peso (kg)',
+                                      isDense: true,
+                                      border: OutlineInputBorder(),
+                                    ),
+                                    onChanged: (val) {
+                                      sets[setIndex] = ExerciseSet(
+                                        reps: sets[setIndex].reps,
+                                        weight: double.tryParse(val) ?? 0.0,
+                                        exerciseId: exercise.id,
+                                      );
+                                    },
+                                  ),
+                                ),
+                                IconButton(
+                                  icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
+                                  onPressed: () {
+                                    setState(() {
+                                      sets.removeAt(setIndex);
+                                    });
                                   },
                                 ),
-                              ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: TextField(
-                                  keyboardType: TextInputType.number,
-                                  decoration: const InputDecoration(labelText: 'Peso (kg)'),
-                                  onChanged: (val) {
-                                    sets[setIndex] = ExerciseSet(
-                                      reps: set.reps,
-                                      weight: double.tryParse(val) ?? 0.0,
-                                      exerciseId: exercise.id,
-                                    );
-                                  },
-                                ),
-                              ),
-                              IconButton(
-                                icon: const Icon(Icons.delete),
-                                onPressed: () {
-                                  setState(() {
-                                    sets.removeAt(setIndex);
-                                  });
-                                },
-                              ),
-                            ],
+                              ],
+                            ),
                           );
                         }),
-                        TextButton.icon(
-                          onPressed: () => _addSet(exercise.id!),
-                          icon: const Icon(Icons.add),
-                          label: const Text('Adicionar Série'),
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: TextButton.icon(
+                            onPressed: () => _addSet(exercise.id!),
+                            icon: const Icon(Icons.add),
+                            label: const Text('Adicionar Série'),
+                          ),
                         ),
                       ],
                     ),
