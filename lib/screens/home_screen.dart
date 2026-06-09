@@ -51,7 +51,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.psychology),
-            label: 'Gemini IA',
+            label: 'IA',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.person),
