@@ -6,7 +6,15 @@ import '../models/user_profile.dart';
 class AiPromptHelper {
   static String generateCreateWorkoutPrompt(String userRequest, UserProfile profile) {
     String profileContext = '';
+    
     if (profile.age.isNotEmpty || profile.weight.isNotEmpty || profile.goal.isNotEmpty) {
+      String measurements = '';
+      if (profile.arm.isNotEmpty || profile.chest.isNotEmpty || profile.thigh.isNotEmpty) {
+        measurements = '''
+- Medidas: Braço (${profile.arm}cm), Peito (${profile.chest}cm), Cintura (${profile.waist}cm), Quadril (${profile.hip}cm), Coxa (${profile.thigh}cm), Panturrilha (${profile.calf}cm).
+''';
+      }
+
       profileContext = '''
 Meu perfil físico atual:
 - Idade: ${profile.age}
@@ -16,6 +24,7 @@ Meu perfil físico atual:
 - Experiência: ${profile.experienceLevel}
 - Objetivo: ${profile.goal}
 - Limitações: ${profile.limitations}
+$measurements
 ''';
     }
 

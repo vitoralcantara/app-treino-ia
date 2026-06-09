@@ -15,6 +15,14 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   final _weightController = TextEditingController();
   final _heightController = TextEditingController();
   final _limitationsController = TextEditingController();
+  
+  // Controladores de Medidas
+  final _armController = TextEditingController();
+  final _chestController = TextEditingController();
+  final _waistController = TextEditingController();
+  final _hipController = TextEditingController();
+  final _thighController = TextEditingController();
+  final _calfController = TextEditingController();
 
   String? _selectedGender;
   String? _selectedExperience;
@@ -32,6 +40,13 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     _weightController.text = profile.weight;
     _heightController.text = profile.height;
     _limitationsController.text = profile.limitations;
+    
+    _armController.text = profile.arm;
+    _chestController.text = profile.chest;
+    _waistController.text = profile.waist;
+    _hipController.text = profile.hip;
+    _thighController.text = profile.thigh;
+    _calfController.text = profile.calf;
 
     // Apenas preenche se o valor existir na lista, caso contrário deixa nulo
     if (_genderOptions.contains(profile.gender)) {
@@ -54,6 +69,12 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       experienceLevel: _selectedExperience ?? '',
       goal: _selectedGoal ?? '',
       limitations: _limitationsController.text,
+      arm: _armController.text,
+      chest: _chestController.text,
+      waist: _waistController.text,
+      hip: _hipController.text,
+      thigh: _thighController.text,
+      calf: _calfController.text,
     );
     ref.read(profileProvider.notifier).saveProfile(profile);
     ScaffoldMessenger.of(context).showSnackBar(
@@ -134,7 +155,43 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             ),
             const SizedBox(height: 10),
             TextField(controller: _limitationsController, decoration: const InputDecoration(labelText: 'Lesões ou Limitações (Opcional)', border: OutlineInputBorder()), maxLines: 2),
-            const SizedBox(height: 20),
+            
+            const SizedBox(height: 30),
+            const Text(
+              'Medidas Corporais (Opcional)',
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Ajuda a IA a focar em assimetrias ou áreas de interesse.',
+              style: TextStyle(color: Colors.grey, fontSize: 12),
+            ),
+            const SizedBox(height: 15),
+            Row(
+              children: [
+                Expanded(child: TextField(controller: _armController, decoration: const InputDecoration(labelText: 'Braço (cm)', border: OutlineInputBorder()), keyboardType: TextInputType.number)),
+                const SizedBox(width: 10),
+                Expanded(child: TextField(controller: _chestController, decoration: const InputDecoration(labelText: 'Peito (cm)', border: OutlineInputBorder()), keyboardType: TextInputType.number)),
+              ],
+            ),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                Expanded(child: TextField(controller: _waistController, decoration: const InputDecoration(labelText: 'Cintura (cm)', border: OutlineInputBorder()), keyboardType: TextInputType.number)),
+                const SizedBox(width: 10),
+                Expanded(child: TextField(controller: _hipController, decoration: const InputDecoration(labelText: 'Quadril (cm)', border: OutlineInputBorder()), keyboardType: TextInputType.number)),
+              ],
+            ),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                Expanded(child: TextField(controller: _thighController, decoration: const InputDecoration(labelText: 'Coxa (cm)', border: OutlineInputBorder()), keyboardType: TextInputType.number)),
+                const SizedBox(width: 10),
+                Expanded(child: TextField(controller: _calfController, decoration: const InputDecoration(labelText: 'Panturrilha (cm)', border: OutlineInputBorder()), keyboardType: TextInputType.number)),
+              ],
+            ),
+
+            const SizedBox(height: 30),
             ElevatedButton.icon(
               icon: const Icon(Icons.save),
               onPressed: _saveProfile,

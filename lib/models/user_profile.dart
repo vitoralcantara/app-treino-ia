@@ -8,6 +8,14 @@ class UserProfile {
   final String experienceLevel;
   final String goal;
   final String limitations;
+  
+  // Medidas corporais (opcionais)
+  final String arm;
+  final String chest;
+  final String waist;
+  final String hip;
+  final String thigh;
+  final String calf;
 
   UserProfile({
     this.age = '',
@@ -17,6 +25,12 @@ class UserProfile {
     this.experienceLevel = '',
     this.goal = '',
     this.limitations = '',
+    this.arm = '',
+    this.chest = '',
+    this.waist = '',
+    this.hip = '',
+    this.thigh = '',
+    this.calf = '',
   });
 
   Map<String, dynamic> toMap() {
@@ -28,6 +42,12 @@ class UserProfile {
       'experienceLevel': experienceLevel,
       'goal': goal,
       'limitations': limitations,
+      'arm': arm,
+      'chest': chest,
+      'waist': waist,
+      'hip': hip,
+      'thigh': thigh,
+      'calf': calf,
     };
   }
 
@@ -40,6 +60,12 @@ class UserProfile {
       experienceLevel: map['experienceLevel'] ?? '',
       goal: map['goal'] ?? '',
       limitations: map['limitations'] ?? '',
+      arm: map['arm'] ?? '',
+      chest: map['chest'] ?? '',
+      waist: map['waist'] ?? '',
+      hip: map['hip'] ?? '',
+      thigh: map['thigh'] ?? '',
+      calf: map['calf'] ?? '',
     );
   }
 
@@ -47,3 +73,4 @@ class UserProfile {
 
   factory UserProfile.fromJson(String source) => UserProfile.fromMap(json.decode(source));
 }
+
