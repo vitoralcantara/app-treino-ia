@@ -1,5 +1,7 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:image_picker/image_picker.dart';
 import '../models/workout.dart';
 import '../models/exercise.dart';
 import '../providers/workout_provider.dart';
@@ -157,37 +159,65 @@ class WorkoutDetailsScreen extends ConsumerWidget {
   void _showCreateCustomExerciseDialog(BuildContext context, WidgetRef ref) {
     final nameController = TextEditingController();
     final categoryController = TextEditingController();
-    final imageUrlController = TextEditingController();
+    String? pickedImagePath;
 
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Novo Exercício'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(controller: nameController, decoration: const InputDecoration(labelText: 'Nome')),
-            TextField(controller: categoryController, decoration: const InputDecoration(labelText: 'Categoria (Peito, Pernas...)')),
-            TextField(controller: imageUrlController, decoration: const InputDecoration(labelText: 'URL da Imagem (Opcional)')),
+      builder: (context) => StatefulBuilder(
+        builder: (context, setStateDialog) => AlertDialog(
+          title: const Text('Novo Exercício'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(controller: nameController, decoration: const InputDecoration(labelText: 'Nome')),
+              TextField(controller: categoryController, decoration: const InputDecoration(labelText: 'Categoria (Peito, Pernas...)')),
+              const SizedBox(height: 16),
+              if (pickedImagePath != null)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 8.0),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(8.0),
+                    child: Image.file(
+                      File(pickedImagePath!),
+                      height: 100,
+                      width: double.infinity,
+                      fit: BoxFit.cover,
+                    ),
+                  ),
+                ),
+              ElevatedButton.icon(
+                onPressed: () async {
+                  final ImagePicker picker = ImagePicker();
+                  final XFile? image = await picker.pickImage(source: ImageSource.gallery);
+                  if (image != null) {
+                    setStateDialog(() {
+                      pickedImagePath = image.path;
+                    });
+                  }
+                },
+                icon: const Icon(Icons.photo_library),
+                label: const Text('Selecionar Imagem da Galeria'),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')),
+            ElevatedButton(
+              onPressed: () async {
+                if (nameController.text.isNotEmpty) {
+                  final exercise = Exercise(
+                    name: nameController.text, 
+                    category: categoryController.text,
+                    imageUrl: pickedImagePath, // Usa o caminho local
+                  );
+                  await ref.read(exerciseListProvider.notifier).addExercise(exercise);
+                  if (context.mounted) Navigator.pop(context); // close this dialog
+                }
+              },
+              child: const Text('Criar'),
+            ),
           ],
         ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')),
-          ElevatedButton(
-            onPressed: () async {
-              if (nameController.text.isNotEmpty) {
-                final exercise = Exercise(
-                  name: nameController.text, 
-                  category: categoryController.text,
-                  imageUrl: imageUrlController.text.isNotEmpty ? imageUrlController.text : null,
-                );
-                await ref.read(exerciseListProvider.notifier).addExercise(exercise);
-                if (context.mounted) Navigator.pop(context); // close this dialog
-              }
-            },
-            child: const Text('Criar'),
-          ),
-        ],
       ),
     );
   }

@@ -1,5 +1,7 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:image_picker/image_picker.dart';
 import '../models/workout.dart';
 import '../models/workout_session.dart';
 import '../models/exercise_set.dart';
@@ -160,46 +162,74 @@ class _WorkoutExecutionScreenState extends ConsumerState<WorkoutExecutionScreen>
   void _showCreateCustomExerciseDialog() {
     final nameController = TextEditingController();
     final categoryController = TextEditingController();
-    final imageUrlController = TextEditingController(); // Nova linha
+    String? pickedImagePath;
 
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Novo Exercício'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(controller: nameController, decoration: const InputDecoration(labelText: 'Nome')),
-            TextField(controller: categoryController, decoration: const InputDecoration(labelText: 'Categoria (Peito, Pernas...)')),
-            TextField(controller: imageUrlController, decoration: const InputDecoration(labelText: 'URL da Imagem (Opcional)')), // Novo campo
+      builder: (context) => StatefulBuilder(
+        builder: (context, setStateDialog) => AlertDialog(
+          title: const Text('Novo Exercício'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(controller: nameController, decoration: const InputDecoration(labelText: 'Nome')),
+              TextField(controller: categoryController, decoration: const InputDecoration(labelText: 'Categoria (Peito, Pernas...)')),
+              const SizedBox(height: 16),
+              if (pickedImagePath != null)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 8.0),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(8.0),
+                    child: Image.file(
+                      File(pickedImagePath!),
+                      height: 100,
+                      width: double.infinity,
+                      fit: BoxFit.cover,
+                    ),
+                  ),
+                ),
+              ElevatedButton.icon(
+                onPressed: () async {
+                  final ImagePicker picker = ImagePicker();
+                  final XFile? image = await picker.pickImage(source: ImageSource.gallery);
+                  if (image != null) {
+                    setStateDialog(() {
+                      pickedImagePath = image.path;
+                    });
+                  }
+                },
+                icon: const Icon(Icons.photo_library),
+                label: const Text('Selecionar Imagem da Galeria'),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')),
+            ElevatedButton(
+              onPressed: () async {
+                if (nameController.text.isNotEmpty) {
+                  final exercise = Exercise(
+                    name: nameController.text, 
+                    category: categoryController.text,
+                    imageUrl: pickedImagePath, // Usa o caminho local
+                  );
+                  await ref.read(exerciseListProvider.notifier).addExercise(exercise);
+                  
+                  // Buscar o exercício recém criado no banco via provider
+                  final db = ref.read(databaseProvider);
+                  final updatedList = await db.getAllExercises();
+                  final newEx = updatedList.firstWhere((e) => e.name == exercise.name);
+
+                  if (context.mounted) {
+                    Navigator.pop(context);
+                    _addNewExercise(newEx);
+                  }
+                }
+              },
+              child: const Text('Criar'),
+            ),
           ],
         ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')),
-          ElevatedButton(
-            onPressed: () async {
-              if (nameController.text.isNotEmpty) {
-                final exercise = Exercise(
-                  name: nameController.text, 
-                  category: categoryController.text,
-                  imageUrl: imageUrlController.text.isNotEmpty ? imageUrlController.text : null, // Nova propriedade
-                );
-                await ref.read(exerciseListProvider.notifier).addExercise(exercise);
-                
-                // Buscar o exercício recém criado no banco via provider
-                final db = ref.read(databaseProvider);
-                final updatedList = await db.getAllExercises();
-                final newEx = updatedList.firstWhere((e) => e.name == exercise.name);
-
-                if (context.mounted) {
-                  Navigator.pop(context);
-                  _addNewExercise(newEx);
-                }
-              }
-            },
-            child: const Text('Criar'),
-          ),
-        ],
       ),
     );
   }
@@ -345,18 +375,31 @@ class _WorkoutExecutionScreenState extends ConsumerState<WorkoutExecutionScreen>
                                       padding: const EdgeInsets.only(right: 12.0),
                                       child: ClipRRect(
                                         borderRadius: BorderRadius.circular(8.0),
-                                        child: Image.network(
-                                          exercise.imageUrl!,
-                                          width: 60,
-                                          height: 60,
-                                          fit: BoxFit.cover,
-                                          errorBuilder: (context, error, stackTrace) => Container(
-                                            width: 60,
-                                            height: 60,
-                                            color: Colors.grey.shade800,
-                                            child: const Icon(Icons.broken_image, color: Colors.grey),
-                                          ),
-                                        ),
+                                        child: exercise.imageUrl!.startsWith('http')
+                                            ? Image.network(
+                                                exercise.imageUrl!,
+                                                width: 60,
+                                                height: 60,
+                                                fit: BoxFit.cover,
+                                                errorBuilder: (context, error, stackTrace) => Container(
+                                                  width: 60,
+                                                  height: 60,
+                                                  color: Colors.grey.shade800,
+                                                  child: const Icon(Icons.broken_image, color: Colors.grey),
+                                                ),
+                                              )
+                                            : Image.file(
+                                                File(exercise.imageUrl!),
+                                                width: 60,
+                                                height: 60,
+                                                fit: BoxFit.cover,
+                                                errorBuilder: (context, error, stackTrace) => Container(
+                                                  width: 60,
+                                                  height: 60,
+                                                  color: Colors.grey.shade800,
+                                                  child: const Icon(Icons.broken_image, color: Colors.grey),
+                                                ),
+                                              ),
                                       ),
                                     ),
                                   Expanded(
