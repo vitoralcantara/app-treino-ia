@@ -235,6 +235,18 @@ class DatabaseHelper {
     return sessions;
   }
 
+  Future<List<Map<String, dynamic>>> getExerciseHistory(int exerciseId) async {
+    final db = await instance.database;
+    final result = await db.rawQuery('''
+      SELECT ws.date, es.reps, es.weight 
+      FROM exercise_sets es
+      JOIN workout_sessions ws ON es.session_id = ws.id
+      WHERE es.exercise_id = ?
+      ORDER BY ws.date DESC, es.id ASC
+    ''', [exerciseId]);
+    return result;
+  }
+
   Future close() async {
     final db = await instance.database;
     db.close();

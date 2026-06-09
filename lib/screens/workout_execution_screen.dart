@@ -249,6 +249,64 @@ class _WorkoutExecutionScreenState extends ConsumerState<WorkoutExecutionScreen>
     }
   }
 
+  void _showExerciseHistory(Exercise exercise) async {
+    final db = ref.read(databaseProvider);
+    final history = await db.getExerciseHistory(exercise.id!);
+
+    if (!mounted) return;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (context) => DraggableScrollableSheet(
+        expand: false,
+        initialChildSize: 0.6,
+        maxChildSize: 0.9,
+        builder: (context, scrollController) => Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    child: Text(
+                      'Histórico: ${exercise.name}', 
+                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  IconButton(onPressed: () => Navigator.pop(context), icon: const Icon(Icons.close)),
+                ],
+              ),
+            ),
+            Expanded(
+              child: history.isEmpty
+                  ? const Center(child: Text('Nenhum histórico encontrado para este exercício.'))
+                  : ListView.builder(
+                      controller: scrollController,
+                      itemCount: history.length,
+                      itemBuilder: (context, index) {
+                        final record = history[index];
+                        final dateStr = record['date'] as String;
+                        final date = DateTime.parse(dateStr);
+                        final reps = record['reps'];
+                        final weight = record['weight'];
+
+                        return ListTile(
+                          leading: const Icon(Icons.fitness_center),
+                          title: Text('$weight kg x $reps reps'),
+                          subtitle: Text('${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}'),
+                        );
+                      },
+                    ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -273,9 +331,21 @@ class _WorkoutExecutionScreenState extends ConsumerState<WorkoutExecutionScreen>
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(
-                                exercise.name,
-                                style: Theme.of(context).textTheme.titleLarge,
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      exercise.name,
+                                      style: Theme.of(context).textTheme.titleLarge,
+                                    ),
+                                  ),
+                                  IconButton(
+                                    icon: const Icon(Icons.history, color: Colors.blueAccent),
+                                    tooltip: 'Histórico de Cargas',
+                                    onPressed: () => _showExerciseHistory(exercise),
+                                  ),
+                                ],
                               ),
                               const SizedBox(height: 8),
                               ...sets.asMap().entries.map((entry) {
