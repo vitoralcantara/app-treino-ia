@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../services/ai_prompt_helper.dart';
 import '../providers/workout_provider.dart';
+import '../providers/profile_provider.dart';
 
 class AiScreen extends ConsumerStatefulWidget {
   const AiScreen({super.key});
@@ -19,8 +20,10 @@ class _AiScreenState extends ConsumerState<AiScreen> {
   void _generatePrompt() {
     if (_requestController.text.isEmpty) return;
     
+    final profile = ref.read(profileProvider);
+
     setState(() {
-      _generatedPrompt = AiPromptHelper.generateCreateWorkoutPrompt(_requestController.text);
+      _generatedPrompt = AiPromptHelper.generateCreateWorkoutPrompt(_requestController.text, profile);
     });
 
     Clipboard.setData(ClipboardData(text: _generatedPrompt));

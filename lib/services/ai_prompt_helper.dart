@@ -1,11 +1,26 @@
 import 'dart:convert';
 import '../models/workout.dart';
 import '../models/workout_session.dart';
+import '../models/user_profile.dart';
 
 class AiPromptHelper {
-  static String generateCreateWorkoutPrompt(String userRequest) {
+  static String generateCreateWorkoutPrompt(String userRequest, UserProfile profile) {
+    String profileContext = '';
+    if (profile.age.isNotEmpty || profile.weight.isNotEmpty || profile.goal.isNotEmpty) {
+      profileContext = '''
+Meu perfil físico atual:
+- Idade: ${profile.age}
+- Peso: ${profile.weight} kg
+- Altura: ${profile.height} cm
+- Gênero: ${profile.gender}
+- Experiência: ${profile.experienceLevel}
+- Objetivo: ${profile.goal}
+- Limitações: ${profile.limitations}
+''';
+    }
+
     return '''
-Atue como um Personal Trainer. Com base no meu pedido abaixo, crie um treino estruturado.
+Atue como um Personal Trainer. Com base no meu pedido abaixo e no meu perfil físico, crie um treino estruturado.
 Responda EXCLUSIVAMENTE com o código JSON puro, sem textos antes ou depois, seguindo exatamente este formato:
 
 {
@@ -17,6 +32,8 @@ Responda EXCLUSIVAMENTE com o código JSON puro, sem textos antes ou depois, seg
     }
   ]
 }
+
+$profileContext
 
 Meu pedido: $userRequest
 ''';

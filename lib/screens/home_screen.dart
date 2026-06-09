@@ -7,6 +7,7 @@ import '../providers/workout_provider.dart';
 import 'workout_execution_screen.dart';
 import 'workout_details_screen.dart';
 import 'ai_screen.dart';
+import 'profile_screen.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -22,6 +23,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     WorkoutTab(),
     HistoryTab(),
     AiScreen(),
+    ProfileScreen(),
   ];
 
   void _onItemTapped(int index) {
@@ -51,9 +53,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             icon: Icon(Icons.psychology),
             label: 'Gemini IA',
           ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.person),
+            label: 'Perfil',
+          ),
         ],
         currentIndex: _selectedIndex,
         selectedItemColor: Theme.of(context).colorScheme.primary,
+        unselectedItemColor: Colors.grey,
         onTap: _onItemTapped,
       ),
     );
