@@ -118,8 +118,18 @@ class _WorkoutExecutionScreenState extends ConsumerState<WorkoutExecutionScreen>
                   return exerciseListAsync.when(
                     data: (exercises) => ListView.builder(
                       controller: scrollController,
-                      itemCount: exercises.length,
+                      itemCount: exercises.length + 1,
                       itemBuilder: (context, index) {
+                        if (index == exercises.length) {
+                          return ListTile(
+                            leading: const Icon(Icons.add_circle, color: Colors.green),
+                            title: const Text('Criar Novo Exercício'),
+                            onTap: () {
+                              Navigator.pop(context);
+                              _showCreateCustomExerciseDialog();
+                            },
+                          );
+                        }
                         final ex = exercises[index];
                         return ListTile(
                           title: Text(ex.name),
@@ -139,6 +149,47 @@ class _WorkoutExecutionScreenState extends ConsumerState<WorkoutExecutionScreen>
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  void _showCreateCustomExerciseDialog() {
+    final nameController = TextEditingController();
+    final categoryController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Novo Exercício'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(controller: nameController, decoration: const InputDecoration(labelText: 'Nome')),
+            TextField(controller: categoryController, decoration: const InputDecoration(labelText: 'Categoria (Peito, Pernas...)')),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')),
+          ElevatedButton(
+            onPressed: () async {
+              if (nameController.text.isNotEmpty) {
+                final exercise = Exercise(name: nameController.text, category: categoryController.text);
+                await ref.read(exerciseListProvider.notifier).addExercise(exercise);
+                
+                // Buscar o exercício recém criado no banco via provider
+                final db = ref.read(databaseProvider);
+                final updatedList = await db.getAllExercises();
+                final newEx = updatedList.firstWhere((e) => e.name == exercise.name);
+
+                if (context.mounted) {
+                  Navigator.pop(context);
+                  _addNewExercise(newEx);
+                }
+              }
+            },
+            child: const Text('Criar'),
+          ),
+        ],
       ),
     );
   }
