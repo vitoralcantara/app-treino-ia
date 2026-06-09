@@ -14,10 +14,15 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   final _ageController = TextEditingController();
   final _weightController = TextEditingController();
   final _heightController = TextEditingController();
-  final _genderController = TextEditingController();
-  final _experienceController = TextEditingController();
-  final _goalController = TextEditingController();
   final _limitationsController = TextEditingController();
+
+  String? _selectedGender;
+  String? _selectedExperience;
+  String? _selectedGoal;
+
+  final List<String> _genderOptions = ['Masculino', 'Feminino', 'Outro', 'Prefiro não informar'];
+  final List<String> _experienceOptions = ['Iniciante', 'Intermediário', 'Avançado'];
+  final List<String> _goalOptions = ['Hipertrofia (Ganho de Massa)', 'Emagrecimento', 'Força', 'Condicionamento Físico', 'Saúde e Bem-estar'];
 
   @override
   void didChangeDependencies() {
@@ -26,10 +31,18 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     _ageController.text = profile.age;
     _weightController.text = profile.weight;
     _heightController.text = profile.height;
-    _genderController.text = profile.gender;
-    _experienceController.text = profile.experienceLevel;
-    _goalController.text = profile.goal;
     _limitationsController.text = profile.limitations;
+
+    // Apenas preenche se o valor existir na lista, caso contrário deixa nulo
+    if (_genderOptions.contains(profile.gender)) {
+      _selectedGender = profile.gender;
+    }
+    if (_experienceOptions.contains(profile.experienceLevel)) {
+      _selectedExperience = profile.experienceLevel;
+    }
+    if (_goalOptions.contains(profile.goal)) {
+      _selectedGoal = profile.goal;
+    }
   }
 
   void _saveProfile() {
@@ -37,9 +50,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       age: _ageController.text,
       weight: _weightController.text,
       height: _heightController.text,
-      gender: _genderController.text,
-      experienceLevel: _experienceController.text,
-      goal: _goalController.text,
+      gender: _selectedGender ?? '',
+      experienceLevel: _selectedExperience ?? '',
+      goal: _selectedGoal ?? '',
       limitations: _limitationsController.text,
     );
     ref.read(profileProvider.notifier).saveProfile(profile);
@@ -72,13 +85,55 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             const SizedBox(height: 10),
             TextField(controller: _heightController, decoration: const InputDecoration(labelText: 'Altura (cm)', border: OutlineInputBorder()), keyboardType: TextInputType.number),
             const SizedBox(height: 10),
-            TextField(controller: _genderController, decoration: const InputDecoration(labelText: 'Gênero', border: OutlineInputBorder())),
+            DropdownButtonFormField<String>(
+              decoration: const InputDecoration(labelText: 'Gênero', border: OutlineInputBorder()),
+              initialValue: _selectedGender,
+              items: _genderOptions.map((String value) {
+                return DropdownMenuItem<String>(
+                  value: value,
+                  child: Text(value),
+                );
+              }).toList(),
+              onChanged: (newValue) {
+                setState(() {
+                  _selectedGender = newValue;
+                });
+              },
+            ),
             const SizedBox(height: 10),
-            TextField(controller: _experienceController, decoration: const InputDecoration(labelText: 'Nível de Experiência (ex: Iniciante)', border: OutlineInputBorder())),
+            DropdownButtonFormField<String>(
+              decoration: const InputDecoration(labelText: 'Nível de Experiência', border: OutlineInputBorder()),
+              initialValue: _selectedExperience,
+              items: _experienceOptions.map((String value) {
+                return DropdownMenuItem<String>(
+                  value: value,
+                  child: Text(value),
+                );
+              }).toList(),
+              onChanged: (newValue) {
+                setState(() {
+                  _selectedExperience = newValue;
+                });
+              },
+            ),
             const SizedBox(height: 10),
-            TextField(controller: _goalController, decoration: const InputDecoration(labelText: 'Objetivo Principal (ex: Hipertrofia)', border: OutlineInputBorder())),
+            DropdownButtonFormField<String>(
+              decoration: const InputDecoration(labelText: 'Objetivo Principal', border: OutlineInputBorder()),
+              initialValue: _selectedGoal,
+              items: _goalOptions.map((String value) {
+                return DropdownMenuItem<String>(
+                  value: value,
+                  child: Text(value),
+                );
+              }).toList(),
+              onChanged: (newValue) {
+                setState(() {
+                  _selectedGoal = newValue;
+                });
+              },
+            ),
             const SizedBox(height: 10),
-            TextField(controller: _limitationsController, decoration: const InputDecoration(labelText: 'Lesões ou Limitações', border: OutlineInputBorder()), maxLines: 2),
+            TextField(controller: _limitationsController, decoration: const InputDecoration(labelText: 'Lesões ou Limitações (Opcional)', border: OutlineInputBorder()), maxLines: 2),
             const SizedBox(height: 20),
             ElevatedButton.icon(
               icon: const Icon(Icons.save),
@@ -92,3 +147,4 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     );
   }
 }
+
