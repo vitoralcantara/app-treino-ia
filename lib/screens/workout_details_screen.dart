@@ -157,6 +157,7 @@ class WorkoutDetailsScreen extends ConsumerWidget {
   void _showCreateCustomExerciseDialog(BuildContext context, WidgetRef ref) {
     final nameController = TextEditingController();
     final categoryController = TextEditingController();
+    final imageUrlController = TextEditingController();
 
     showDialog(
       context: context,
@@ -167,6 +168,7 @@ class WorkoutDetailsScreen extends ConsumerWidget {
           children: [
             TextField(controller: nameController, decoration: const InputDecoration(labelText: 'Nome')),
             TextField(controller: categoryController, decoration: const InputDecoration(labelText: 'Categoria (Peito, Pernas...)')),
+            TextField(controller: imageUrlController, decoration: const InputDecoration(labelText: 'URL da Imagem (Opcional)')),
           ],
         ),
         actions: [
@@ -174,7 +176,11 @@ class WorkoutDetailsScreen extends ConsumerWidget {
           ElevatedButton(
             onPressed: () async {
               if (nameController.text.isNotEmpty) {
-                final exercise = Exercise(name: nameController.text, category: categoryController.text);
+                final exercise = Exercise(
+                  name: nameController.text, 
+                  category: categoryController.text,
+                  imageUrl: imageUrlController.text.isNotEmpty ? imageUrlController.text : null,
+                );
                 await ref.read(exerciseListProvider.notifier).addExercise(exercise);
                 if (context.mounted) Navigator.pop(context); // close this dialog
               }

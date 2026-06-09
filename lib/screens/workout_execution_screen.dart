@@ -332,12 +332,41 @@ class _WorkoutExecutionScreenState extends ConsumerState<WorkoutExecutionScreen>
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
+                                  if (exercise.imageUrl != null && exercise.imageUrl!.isNotEmpty)
+                                    Padding(
+                                      padding: const EdgeInsets.only(right: 12.0),
+                                      child: ClipRRect(
+                                        borderRadius: BorderRadius.circular(8.0),
+                                        child: Image.network(
+                                          exercise.imageUrl!,
+                                          width: 60,
+                                          height: 60,
+                                          fit: BoxFit.cover,
+                                          errorBuilder: (context, error, stackTrace) => Container(
+                                            width: 60,
+                                            height: 60,
+                                            color: Colors.grey.shade800,
+                                            child: const Icon(Icons.broken_image, color: Colors.grey),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
                                   Expanded(
-                                    child: Text(
-                                      exercise.name,
-                                      style: Theme.of(context).textTheme.titleLarge,
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          exercise.name,
+                                          style: Theme.of(context).textTheme.titleLarge,
+                                        ),
+                                        if (exercise.category != null)
+                                          Text(
+                                            exercise.category!,
+                                            style: const TextStyle(color: Colors.grey, fontSize: 12),
+                                          ),
+                                      ],
                                     ),
                                   ),
                                   IconButton(

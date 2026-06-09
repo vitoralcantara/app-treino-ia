@@ -23,9 +23,16 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 1,
+      version: 2, // Aumentei a versão para 2
       onCreate: _createDB,
+      onUpgrade: _upgradeDB, // Adicionado método de atualização
     );
+  }
+
+  Future _upgradeDB(Database db, int oldVersion, int newVersion) async {
+    if (oldVersion < 2) {
+      await db.execute('ALTER TABLE exercises ADD COLUMN image_url TEXT');
+    }
   }
 
   Future _createDB(Database db, int version) async {
@@ -40,7 +47,8 @@ class DatabaseHelper {
         id $idType,
         name $textType,
         category $textTypeNullable,
-        instructions $textTypeNullable
+        instructions $textTypeNullable,
+        image_url $textTypeNullable
       )
     ''');
 
@@ -91,12 +99,12 @@ class DatabaseHelper {
 
   Future _seedExercises(Database db) async {
     final basicExercises = [
-      {'name': 'Supino Reto', 'category': 'Peito'},
-      {'name': 'Agachamento Livre', 'category': 'Pernas'},
-      {'name': 'Levantamento Terra', 'category': 'Costas'},
-      {'name': 'Desenvolvimento Militar', 'category': 'Ombros'},
-      {'name': 'Rosca Direta', 'category': 'Bíceps'},
-      {'name': 'Tríceps Pulley', 'category': 'Tríceps'},
+      {'name': 'Supino Reto', 'category': 'Peito', 'image_url': 'https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?auto=format&fit=crop&q=80&w=400'},
+      {'name': 'Agachamento Livre', 'category': 'Pernas', 'image_url': 'https://images.unsplash.com/photo-1574680096145-d05b474e2155?auto=format&fit=crop&q=80&w=400'},
+      {'name': 'Levantamento Terra', 'category': 'Costas', 'image_url': 'https://images.unsplash.com/photo-1603287681836-b174ce5074c2?auto=format&fit=crop&q=80&w=400'},
+      {'name': 'Desenvolvimento Militar', 'category': 'Ombros', 'image_url': 'https://images.unsplash.com/photo-1581009146145-b5ef050c2e1e?auto=format&fit=crop&q=80&w=400'},
+      {'name': 'Rosca Direta', 'category': 'Bíceps', 'image_url': 'https://images.unsplash.com/photo-1581009137042-c552e485697a?auto=format&fit=crop&q=80&w=400'},
+      {'name': 'Tríceps Pulley', 'category': 'Tríceps', 'image_url': 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?auto=format&fit=crop&q=80&w=400'},
     ];
 
     for (var exercise in basicExercises) {
