@@ -193,20 +193,62 @@ class HistoryTab extends ConsumerWidget {
                 ),
               ],
             ),
-      body: sessions.isEmpty
-          ? const Center(child: Text('Nenhum histórico registrado.'))
-          : ListView.builder(
-              itemCount: sessions.length,
-              itemBuilder: (context, index) {
-                final session = sessions[index];
-                return ListTile(
-                  title: Text(session.workoutName),
-                  subtitle: Text(
-                    '${session.date.day}/${session.date.month}/${session.date.year} - ${session.sets.length} séries',
+      body: Column(
+        children: [
+          if (sessions.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Container(
+                padding: const EdgeInsets.all(20.0),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [Theme.of(context).colorScheme.primary, Theme.of(context).colorScheme.tertiary],
                   ),
-                );
-              },
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.2),
+                      blurRadius: 8,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: [
+                    Column(
+                      children: [
+                        const Icon(Icons.emoji_events, color: Colors.white, size: 32),
+                        const SizedBox(height: 8),
+                        const Text('Treinos Concluídos', style: TextStyle(color: Colors.white70, fontSize: 14)),
+                        Text(
+                          '${sessions.length}',
+                          style: const TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
             ),
+          Expanded(
+            child: sessions.isEmpty
+                ? const Center(child: Text('Nenhum histórico registrado.'))
+                : ListView.builder(
+                    itemCount: sessions.length,
+                    itemBuilder: (context, index) {
+                      final session = sessions[index];
+                      return ListTile(
+                        title: Text(session.workoutName),
+                        subtitle: Text(
+                          '${session.date.day.toString().padLeft(2, '0')}/${session.date.month.toString().padLeft(2, '0')}/${session.date.year} - ${session.sets.length} séries',
+                        ),
+                      );
+                    },
+                  ),
+          ),
+        ],
+      ),
     );
   }
 }
