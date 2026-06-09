@@ -17,6 +17,7 @@ class WorkoutExecutionScreen extends ConsumerStatefulWidget {
 
 class _WorkoutExecutionScreenState extends ConsumerState<WorkoutExecutionScreen> {
   final Map<int, List<ExerciseSet>> _setsByExercise = {};
+  final Map<int, List<bool>> _completedSets = {}; // Controla quais séries foram concluídas
   final List<Exercise> _dynamicExercises = []; // Exercícios adicionados na hora
   bool _initialized = false;
 
@@ -55,10 +56,12 @@ class _WorkoutExecutionScreenState extends ConsumerState<WorkoutExecutionScreen>
             weight: s.weight,
             exerciseId: exercise.id,
           )).toList();
+          _completedSets[exercise.id!] = List.generate(previousSets.length, (_) => false);
         } else {
           _setsByExercise[exercise.id!] = [
             ExerciseSet(reps: 10, weight: 0, exerciseId: exercise.id),
           ];
+          _completedSets[exercise.id!] = [false];
         }
       }
     });
@@ -72,6 +75,7 @@ class _WorkoutExecutionScreenState extends ConsumerState<WorkoutExecutionScreen>
       _setsByExercise[exercise.id!] = [
         ExerciseSet(reps: 10, weight: 0, exerciseId: exercise.id),
       ];
+      _completedSets[exercise.id!] = [false];
     });
 
     // Opcional: Salvar no treino original para sempre
@@ -204,18 +208,26 @@ class _WorkoutExecutionScreenState extends ConsumerState<WorkoutExecutionScreen>
           exerciseId: exerciseId,
         ),
       );
+      _completedSets[exerciseId]!.add(false);
     });
   }
 
   void _finishWorkout() async {
-    final List<ExerciseSet> allSets = [];
+    final List<ExerciseSet> completedSetsList = [];
+    
+    // Salvar APENAS as séries que foram marcadas como concluídas
     _setsByExercise.forEach((exerciseId, sets) {
-      allSets.addAll(sets);
+      final completedStatus = _completedSets[exerciseId]!;
+      for (int i = 0; i < sets.length; i++) {
+        if (completedStatus[i]) {
+          completedSetsList.add(sets[i]);
+        }
+      }
     });
 
-    if (allSets.isEmpty) {
+    if (completedSetsList.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Registre pelo menos uma série!')),
+        const SnackBar(content: Text('Marque pelo menos uma série como concluída!')),
       );
       return;
     }
@@ -224,11 +236,15 @@ class _WorkoutExecutionScreenState extends ConsumerState<WorkoutExecutionScreen>
       workoutId: widget.workout.id!,
       workoutName: widget.workout.name,
       date: DateTime.now(),
-      sets: allSets,
+      sets: completedSetsList,
     );
 
     await ref.read(sessionListProvider.notifier).addSession(session);
+    
     if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Treino concluído e salvo no histórico!')),
+      );
       Navigator.pop(context);
     }
   }
@@ -238,12 +254,6 @@ class _WorkoutExecutionScreenState extends ConsumerState<WorkoutExecutionScreen>
     return Scaffold(
       appBar: AppBar(
         title: Text('Executando: ${widget.workout.name}'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.check),
-            onPressed: _finishWorkout,
-          ),
-        ],
       ),
       body: Column(
         children: [
@@ -271,13 +281,19 @@ class _WorkoutExecutionScreenState extends ConsumerState<WorkoutExecutionScreen>
                               ...sets.asMap().entries.map((entry) {
                                 int setIndex = entry.key;
                                 ExerciseSet set = entry.value;
+                                bool isCompleted = _completedSets[exercise.id!]![setIndex];
+
                                 return Padding(
                                   padding: const EdgeInsets.symmetric(vertical: 4.0),
                                   child: Row(
                                     children: [
                                       CircleAvatar(
-                                        radius: 12,
-                                        child: Text('${setIndex + 1}', style: const TextStyle(fontSize: 12)),
+                                        radius: 14,
+                                        backgroundColor: isCompleted ? Colors.green : Colors.grey.shade700,
+                                        child: Text(
+                                          '${setIndex + 1}', 
+                                          style: const TextStyle(fontSize: 12, color: Colors.white, fontWeight: FontWeight.bold)
+                                        ),
                                       ),
                                       const SizedBox(width: 12),
                                       Expanded(
@@ -317,11 +333,21 @@ class _WorkoutExecutionScreenState extends ConsumerState<WorkoutExecutionScreen>
                                           },
                                         ),
                                       ),
+                                      Checkbox(
+                                        value: isCompleted,
+                                        activeColor: Colors.green,
+                                        onChanged: (val) {
+                                          setState(() {
+                                            _completedSets[exercise.id!]![setIndex] = val ?? false;
+                                          });
+                                        },
+                                      ),
                                       IconButton(
                                         icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
                                         onPressed: () {
                                           setState(() {
                                             sets.removeAt(setIndex);
+                                            _completedSets[exercise.id!]!.removeAt(setIndex);
                                           });
                                         },
                                       ),
@@ -345,13 +371,26 @@ class _WorkoutExecutionScreenState extends ConsumerState<WorkoutExecutionScreen>
                   ),
           ),
           Padding(
-            padding: const EdgeInsets.all(16.0),
+            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
             child: ElevatedButton.icon(
               onPressed: _showAddExerciseDialog,
               icon: const Icon(Icons.add_circle_outline),
               label: const Text('Adicionar Novo Exercício Hoje'),
               style: ElevatedButton.styleFrom(
                 minimumSize: const Size.fromHeight(50),
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16.0, 0, 16.0, 16.0),
+            child: ElevatedButton.icon(
+              onPressed: _finishWorkout,
+              icon: const Icon(Icons.check_circle),
+              label: const Text('Concluir Treino', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.green,
+                foregroundColor: Colors.white,
+                minimumSize: const Size.fromHeight(55),
               ),
             ),
           ),
