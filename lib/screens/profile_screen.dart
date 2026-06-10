@@ -109,7 +109,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             const SizedBox(height: 10),
             DropdownButtonFormField<String>(
               decoration: const InputDecoration(labelText: 'Gênero', border: OutlineInputBorder()),
-              value: _selectedGender,
+              initialValue: _selectedGender,
               items: _genderOptions.map((String value) {
                 return DropdownMenuItem<String>(
                   value: value,
@@ -125,7 +125,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             const SizedBox(height: 10),
             DropdownButtonFormField<String>(
               decoration: const InputDecoration(labelText: 'Nível de Experiência', border: OutlineInputBorder()),
-              value: _selectedExperience,
+              initialValue: _selectedExperience,
               items: _experienceOptions.map((String value) {
                 return DropdownMenuItem<String>(
                   value: value,
@@ -141,7 +141,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             const SizedBox(height: 10),
             DropdownButtonFormField<String>(
               decoration: const InputDecoration(labelText: 'Objetivo Principal', border: OutlineInputBorder()),
-              value: _selectedGoal,
+              initialValue: _selectedGoal,
               items: _goalOptions.map((String value) {
                 return DropdownMenuItem<String>(
                   value: value,
