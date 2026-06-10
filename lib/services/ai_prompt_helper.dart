@@ -29,18 +29,30 @@ $measurements
     }
 
     return '''
-Atue como um Personal Trainer. Com base no meu pedido abaixo e no meu perfil físico, crie um treino estruturado.
-Responda EXCLUSIVAMENTE com o código JSON puro, sem textos antes ou depois, seguindo exatamente este formato:
+Atue como um Personal Trainer. Com base no meu pedido abaixo e no meu perfil físico, crie uma rotina de treinos estruturada.
+Se eu pedir uma rotina (como ABC), crie uma lista com todos os treinos.
+Responda EXCLUSIVAMENTE com o código JSON puro, sem textos antes ou depois, seguindo exatamente este formato (uma lista de treinos):
 
-{
-  "name": "Nome do Treino",
-  "exercises": [
-    {
-      "name": "Nome do Exercício",
-      "category": "Grupo Muscular"
-    }
-  ]
-}
+[
+  {
+    "name": "Treino A - Peito e Tríceps",
+    "exercises": [
+      {
+        "name": "Supino Reto",
+        "category": "Peito"
+      }
+    ]
+  },
+  {
+    "name": "Treino B - Costas e Bíceps",
+    "exercises": [
+      {
+        "name": "Puxada Alta",
+        "category": "Costas"
+      }
+    ]
+  }
+]
 
 $profileContext
 
@@ -81,14 +93,21 @@ $historyJson
 ''';
   }
 
-  static Workout parseAiResponse(String response) {
+  static List<Workout> parseAiResponse(String response) {
     try {
       // Extrai JSON se a IA tiver colocado em blocos de markdown
-      final jsonMatch = RegExp(r'\{.*\}', dotAll: true).firstMatch(response);
+      final jsonMatch = RegExp(r'\[.*\]|\{.*\}', dotAll: true).firstMatch(response);
       final jsonString = jsonMatch?.group(0) ?? response;
       
-      final Map<String, dynamic> data = jsonDecode(jsonString);
-      return Workout.fromJson(data);
+      final dynamic decoded = jsonDecode(jsonString);
+      
+      if (decoded is List) {
+        return decoded.map((data) => Workout.fromJson(data)).toList();
+      } else if (decoded is Map<String, dynamic>) {
+        return [Workout.fromJson(decoded)];
+      }
+      
+      throw Exception('Formato JSON não reconhecido.');
     } catch (e) {
       throw Exception('Formato de resposta inválido. Certifique-se de copiar o JSON corretamente.');
     }

@@ -36,8 +36,11 @@ class _AiScreenState extends ConsumerState<AiScreen> {
     if (_responseController.text.isEmpty) return;
 
     try {
-      final workout = AiPromptHelper.parseAiResponse(_responseController.text);
-      ref.read(workoutListProvider.notifier).addWorkout(workout);
+      final workouts = AiPromptHelper.parseAiResponse(_responseController.text);
+      
+      for (var workout in workouts) {
+        ref.read(workoutListProvider.notifier).addWorkout(workout);
+      }
       
       setState(() {
         _responseController.clear();
@@ -45,8 +48,12 @@ class _AiScreenState extends ConsumerState<AiScreen> {
         _generatedPrompt = '';
       });
 
+      final message = workouts.length > 1 
+          ? '${workouts.length} treinos importados com sucesso!' 
+          : 'Treino "${workouts[0].name}" importado com sucesso!';
+
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Treino "${workout.name}" importado com sucesso!')),
+        SnackBar(content: Text(message)),
       );
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
