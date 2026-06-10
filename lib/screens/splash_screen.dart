@@ -22,11 +22,11 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
     );
 
     _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _controller, curve: const Interval(0.0, 0.6, curve: Curves.easeIn)),
+      CurvedAnimation(parent: _controller, curve: Interval(0.0, 0.6, curve: Curves.easeIn)),
     );
 
     _scaleAnimation = Tween<double>(begin: 0.8, end: 1.0).animate(
-      CurvedAnimation(parent: _controller, curve: const Interval(0.0, 0.6, curve: Curves.outBack)),
+      CurvedAnimation(parent: _controller, curve: Interval(0.0, 0.6, curve: Curves.easeOutBack)),
     );
 
     _controller.forward().then((_) {
