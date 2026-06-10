@@ -71,6 +71,8 @@ class _AiScreenState extends ConsumerState<AiScreen> {
         _generatedPrompt = '';
       });
 
+      if (!mounted) return;
+
       final message = workouts.length > 1 
           ? '${workouts.length} treinos importados com sucesso!' 
           : 'Treino "${workouts[0].name}" importado com sucesso!';
@@ -79,6 +81,7 @@ class _AiScreenState extends ConsumerState<AiScreen> {
         SnackBar(content: Text(message)),
       );
     } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Erro ao importar: $e')),
       );
