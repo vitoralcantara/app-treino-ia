@@ -3,7 +3,8 @@ class Exercise {
   final String name;
   final String? category;
   final String? instructions;
-  final String? imageUrl; // Nova propriedade
+  final String? imageUrl;
+  final bool isAvailable; // Nova propriedade para a biblioteca
 
   Exercise({
     this.id,
@@ -11,6 +12,7 @@ class Exercise {
     this.category,
     this.instructions,
     this.imageUrl,
+    this.isAvailable = true,
   });
 
   factory Exercise.fromJson(Map<String, dynamic> json) {
@@ -19,7 +21,8 @@ class Exercise {
       name: json['name'] as String,
       category: json['category'] as String?,
       instructions: json['instructions'] as String?,
-      imageUrl: (json['imageUrl'] ?? json['image_url']) as String?, // Suporta camelCase e snake_case
+      imageUrl: (json['imageUrl'] ?? json['image_url']) as String?,
+      isAvailable: (json['isAvailable'] ?? json['is_available'] ?? 1) == 1,
     );
   }
 
@@ -29,7 +32,8 @@ class Exercise {
       'name': name,
       if (category != null) 'category': category,
       if (instructions != null) 'instructions': instructions,
-      if (imageUrl != null) 'image_url': imageUrl, // Salva como snake_case para o banco
+      if (imageUrl != null) 'image_url': imageUrl,
+      'is_available': isAvailable ? 1 : 0,
     };
   }
 }

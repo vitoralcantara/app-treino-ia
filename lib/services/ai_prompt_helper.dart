@@ -1,10 +1,11 @@
 import 'dart:convert';
 import '../models/workout.dart';
+import '../models/exercise.dart';
 import '../models/workout_session.dart';
 import '../models/user_profile.dart';
 
 class AiPromptHelper {
-  static String generateCreateWorkoutPrompt(String userRequest, UserProfile profile) {
+  static String generateCreateWorkoutPrompt(String userRequest, UserProfile profile, List<Exercise> availableExercises) {
     String profileContext = '';
     
     if (profile.age.isNotEmpty || profile.weight.isNotEmpty || profile.goal.isNotEmpty) {
@@ -25,6 +26,17 @@ Meu perfil físico atual:
 - Objetivo: ${profile.goal}
 - Limitações: ${profile.limitations}
 $measurements
+''';
+    }
+
+    String exercisesContext = '';
+    if (availableExercises.isNotEmpty) {
+      final names = availableExercises.map((e) => '- ${e.name} (${e.category ?? "Geral"})').join('\n');
+      exercisesContext = '''
+Tenho preferência/disponibilidade para os seguintes exercícios:
+$names
+
+Tente utilizar preferencialmente estes exercícios na criação do treino. Se precisar de algo fora desta lista para completar a rotina, você pode sugerir, mas PRIORIZE os acima.
 ''';
     }
 
@@ -55,6 +67,8 @@ Responda EXCLUSIVAMENTE com o código JSON puro, sem textos antes ou depois, seg
 ]
 
 $profileContext
+
+$exercisesContext
 
 Meu pedido: $userRequest
 ''';

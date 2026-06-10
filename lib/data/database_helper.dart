@@ -23,7 +23,7 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 2, // Aumentei a versão para 2
+      version: 3, // Aumentei a versão para 3
       onCreate: _createDB,
       onUpgrade: _upgradeDB, // Adicionado método de atualização
     );
@@ -32,6 +32,9 @@ class DatabaseHelper {
   Future _upgradeDB(Database db, int oldVersion, int newVersion) async {
     if (oldVersion < 2) {
       await db.execute('ALTER TABLE exercises ADD COLUMN image_url TEXT');
+    }
+    if (oldVersion < 3) {
+      await db.execute('ALTER TABLE exercises ADD COLUMN is_available INTEGER DEFAULT 1');
     }
   }
 
@@ -48,7 +51,8 @@ class DatabaseHelper {
         name $textType,
         category $textTypeNullable,
         instructions $textTypeNullable,
-        image_url $textTypeNullable
+        image_url $textTypeNullable,
+        is_available INTEGER DEFAULT 1
       )
     ''');
 
@@ -122,6 +126,31 @@ class DatabaseHelper {
   Future<int> createExercise(Exercise exercise) async {
     final db = await instance.database;
     return await db.insert('exercises', exercise.toJson());
+  }
+
+  Future<void> deleteExercise(int id) async {
+    final db = await instance.database;
+    await db.delete('exercises', where: 'id = ?', whereArgs: [id]);
+  }
+
+  Future<void> updateExercise(Exercise exercise) async {
+    final db = await instance.database;
+    await db.update(
+      'exercises',
+      exercise.toJson(),
+      where: 'id = ?',
+      whereArgs: [exercise.id],
+    );
+  }
+
+  Future<void> toggleExerciseAvailability(int id, bool isAvailable) async {
+    final db = await instance.database;
+    await db.update(
+      'exercises',
+      {'is_available': isAvailable ? 1 : 0},
+      where: 'id = ?',
+      whereArgs: [id],
+    );
   }
 
   // --- Workout Operations ---

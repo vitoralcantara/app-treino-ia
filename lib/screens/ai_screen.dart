@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../services/ai_prompt_helper.dart';
 import '../providers/workout_provider.dart';
 import '../providers/profile_provider.dart';
+import '../models/exercise.dart';
+import 'exercise_library_screen.dart';
 
 class AiScreen extends ConsumerStatefulWidget {
   const AiScreen({super.key});
@@ -21,9 +23,15 @@ class _AiScreenState extends ConsumerState<AiScreen> {
     if (_requestController.text.isEmpty) return;
     
     final profile = ref.read(profileProvider);
+    final exercisesAsync = ref.read(exerciseListProvider);
+    
+    final List<Exercise> availableExercises = exercisesAsync.maybeWhen(
+      data: (list) => list.where((e) => e.isAvailable).toList(),
+      orElse: () => [],
+    );
 
     setState(() {
-      _generatedPrompt = AiPromptHelper.generateCreateWorkoutPrompt(_requestController.text, profile);
+      _generatedPrompt = AiPromptHelper.generateCreateWorkoutPrompt(_requestController.text, profile, availableExercises);
     });
 
     Clipboard.setData(ClipboardData(text: _generatedPrompt));
@@ -90,6 +98,21 @@ class _AiScreenState extends ConsumerState<AiScreen> {
                       ),
                     ),
                   ],
+                ),
+              ),
+              const SizedBox(height: 20),
+              Card(
+                child: ListTile(
+                  leading: const Icon(Icons.library_books, color: Colors.blue),
+                  title: const Text('Minha Biblioteca de Exercícios'),
+                  subtitle: const Text('Selecione o que você tem disponível'),
+                  trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => const ExerciseLibraryScreen()),
+                    );
+                  },
                 ),
               ),
               const SizedBox(height: 20),

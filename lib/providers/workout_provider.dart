@@ -67,6 +67,18 @@ class ExerciseListNotifier extends Notifier<AsyncValue<List<Exercise>>> {
     await db.createExercise(exercise);
     await _load();
   }
+
+  Future<void> toggleExerciseAvailability(int id, bool isAvailable) async {
+    final db = ref.read(databaseProvider);
+    await db.toggleExerciseAvailability(id, isAvailable);
+    await _load();
+  }
+
+  Future<void> deleteExercise(int id) async {
+    final db = ref.read(databaseProvider);
+    await db.deleteExercise(id);
+    await _load();
+  }
 }
 
 final exerciseListProvider = NotifierProvider<ExerciseListNotifier, AsyncValue<List<Exercise>>>(ExerciseListNotifier.new);
