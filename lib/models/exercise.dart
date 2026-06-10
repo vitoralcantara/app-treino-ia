@@ -4,7 +4,8 @@ class Exercise {
   final String? category;
   final String? instructions;
   final String? imageUrl;
-  final bool isAvailable; // Nova propriedade para a biblioteca
+  final String? videoUrl; // Nova propriedade para link de vídeo
+  final bool isAvailable;
 
   Exercise({
     this.id,
@@ -12,6 +13,7 @@ class Exercise {
     this.category,
     this.instructions,
     this.imageUrl,
+    this.videoUrl,
     this.isAvailable = true,
   });
 
@@ -22,6 +24,7 @@ class Exercise {
       category: json['category'] as String?,
       instructions: json['instructions'] as String?,
       imageUrl: (json['imageUrl'] ?? json['image_url']) as String?,
+      videoUrl: (json['videoUrl'] ?? json['video_url']) as String?, // Suporte a camelCase e snake_case
       isAvailable: (json['isAvailable'] ?? json['is_available'] ?? 1) == 1,
     );
   }
@@ -33,6 +36,7 @@ class Exercise {
       if (category != null) 'category': category,
       if (instructions != null) 'instructions': instructions,
       if (imageUrl != null) 'image_url': imageUrl,
+      if (videoUrl != null) 'video_url': videoUrl,
       'is_available': isAvailable ? 1 : 0,
     };
   }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../models/exercise.dart';
 import '../providers/workout_provider.dart';
 
@@ -53,9 +54,21 @@ class ExerciseLibraryScreen extends ConsumerWidget {
                       ref.read(exerciseListProvider.notifier).toggleExerciseAvailability(ex.id!, val ?? false);
                     },
                   ),
-                  trailing: IconButton(
-                    icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
-                    onPressed: () => _confirmDelete(context, ref, ex),
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (ex.videoUrl != null && ex.videoUrl!.isNotEmpty)
+                        IconButton(
+                          icon: const Icon(Icons.play_circle_outline, color: Colors.blue),
+                          onPressed: () => _launchVideo(ex.videoUrl!),
+                          tooltip: 'Ver vídeo',
+                        ),
+                      IconButton(
+                        icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
+                        onPressed: () => _confirmDelete(context, ref, ex),
+                        tooltip: 'Excluir',
+                      ),
+                    ],
                   ),
                 )).toList(),
               );
@@ -66,6 +79,13 @@ class ExerciseLibraryScreen extends ConsumerWidget {
         error: (e, _) => Center(child: Text('Erro: $e')),
       ),
     );
+  }
+
+  Future<void> _launchVideo(String url) async {
+    final uri = Uri.parse(url);
+    if (!await launchUrl(uri)) {
+      throw Exception('Could not launch $url');
+    }
   }
 
   void _confirmDelete(BuildContext context, WidgetRef ref, Exercise ex) {
@@ -91,6 +111,7 @@ class ExerciseLibraryScreen extends ConsumerWidget {
   void _showAddExerciseDialog(BuildContext context, WidgetRef ref) {
     final nameController = TextEditingController();
     final categoryController = TextEditingController();
+    final videoController = TextEditingController();
 
     showDialog(
       context: context,
@@ -101,6 +122,13 @@ class ExerciseLibraryScreen extends ConsumerWidget {
           children: [
             TextField(controller: nameController, decoration: const InputDecoration(labelText: 'Nome')),
             TextField(controller: categoryController, decoration: const InputDecoration(labelText: 'Categoria (ex: Peito)')),
+            TextField(
+              controller: videoController, 
+              decoration: const InputDecoration(
+                labelText: 'URL do Vídeo (ex: YouTube)',
+                hintText: 'https://...',
+              ),
+            ),
           ],
         ),
         actions: [
@@ -112,6 +140,7 @@ class ExerciseLibraryScreen extends ConsumerWidget {
                   Exercise(
                     name: nameController.text,
                     category: categoryController.text,
+                    videoUrl: videoController.text,
                     isAvailable: true,
                   ),
                 );

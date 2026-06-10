@@ -23,7 +23,7 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 3, // Aumentei a versão para 3
+      version: 4, // Aumentei a versão para 4
       onCreate: _createDB,
       onUpgrade: _upgradeDB, // Adicionado método de atualização
     );
@@ -35,6 +35,9 @@ class DatabaseHelper {
     }
     if (oldVersion < 3) {
       await db.execute('ALTER TABLE exercises ADD COLUMN is_available INTEGER DEFAULT 1');
+    }
+    if (oldVersion < 4) {
+      await db.execute('ALTER TABLE exercises ADD COLUMN video_url TEXT');
     }
   }
 
@@ -52,7 +55,8 @@ class DatabaseHelper {
         category $textTypeNullable,
         instructions $textTypeNullable,
         image_url $textTypeNullable,
-        is_available INTEGER DEFAULT 1
+        is_available INTEGER DEFAULT 1,
+        video_url TEXT
       )
     ''');
 

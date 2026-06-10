@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../models/workout.dart';
 import '../models/workout_session.dart';
 import '../models/exercise_set.dart';
@@ -78,6 +79,17 @@ class _WorkoutExecutionScreenState extends ConsumerState<WorkoutExecutionScreen>
     int minutes = totalSeconds ~/ 60;
     int seconds = totalSeconds % 60;
     return '${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
+  }
+
+  Future<void> _launchVideo(String url) async {
+    final uri = Uri.parse(url);
+    if (!await launchUrl(uri)) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Não foi possível abrir o vídeo: $url')),
+        );
+      }
+    }
   }
 
   @override
@@ -555,11 +567,18 @@ class _WorkoutExecutionScreenState extends ConsumerState<WorkoutExecutionScreen>
                                       ],
                                     ),
                                   ),
+                                  if (exercise.videoUrl != null && exercise.videoUrl!.isNotEmpty)
+                                    IconButton(
+                                      icon: const Icon(Icons.play_circle_fill, color: Colors.blueAccent),
+                                      tooltip: 'Ver execução',
+                                      onPressed: () => _launchVideo(exercise.videoUrl!),
+                                    ),
                                   IconButton(
                                     icon: const Icon(Icons.history, color: Colors.blueAccent),
                                     tooltip: 'Histórico de Cargas',
                                     onPressed: () => _showExerciseHistory(exercise),
                                   ),
+
                                 ],
                               ),
                               const SizedBox(height: 8),
