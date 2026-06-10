@@ -126,4 +126,23 @@ $historyJson
       throw Exception('Formato de resposta inválido. Certifique-se de copiar o JSON corretamente.');
     }
   }
+
+  static List<Exercise> parseExerciseListAiResponse(String response) {
+    try {
+      final jsonMatch = RegExp(r'\[.*\]|\{.*\}', dotAll: true).firstMatch(response);
+      final jsonString = jsonMatch?.group(0) ?? response;
+      
+      final dynamic decoded = jsonDecode(jsonString);
+      
+      if (decoded is List) {
+        return decoded.map((data) => Exercise.fromJson(data as Map<String, dynamic>)).toList();
+      } else if (decoded is Map<String, dynamic>) {
+        return [Exercise.fromJson(decoded)];
+      }
+      
+      throw Exception('Formato JSON não reconhecido.');
+    } catch (e) {
+      throw Exception('Formato de resposta inválido. Certifique-se de copiar o JSON corretamente.');
+    }
+  }
 }

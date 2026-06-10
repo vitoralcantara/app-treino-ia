@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../models/exercise.dart';
 import '../providers/workout_provider.dart';
+import '../services/ai_prompt_helper.dart';
 
 class ExerciseLibraryScreen extends ConsumerWidget {
   const ExerciseLibraryScreen({super.key});
@@ -16,7 +18,18 @@ class ExerciseLibraryScreen extends ConsumerWidget {
         title: const Text('Minha Biblioteca'),
         actions: [
           IconButton(
+            icon: const Icon(Icons.psychology),
+            tooltip: 'Copiar Prompt para IA',
+            onPressed: () => _copyAiPrompt(context),
+          ),
+          IconButton(
+            icon: const Icon(Icons.download),
+            tooltip: 'Importar em Lote (JSON)',
+            onPressed: () => _showBatchImportDialog(context, ref),
+          ),
+          IconButton(
             icon: const Icon(Icons.add),
+            tooltip: 'Adicionar Manual',
             onPressed: () => _showAddExerciseDialog(context, ref),
           ),
         ],
@@ -148,6 +161,79 @@ class ExerciseLibraryScreen extends ConsumerWidget {
               }
             },
             child: const Text('Adicionar'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _copyAiPrompt(BuildContext context) {
+    const prompt = '''
+Atue como um Personal Trainer. Sugira uma lista de exercícios de musculação.
+Responda EXCLUSIVAMENTE com o código JSON puro, sem textos antes ou depois, seguindo exatamente este formato:
+
+[
+  {
+    "name": "Nome do Exercício",
+    "category": "Grupo Muscular",
+    "video_url": "Link opcional do YouTube (se houver)",
+    "instructions": "Breve instrução"
+  }
+]
+''';
+    Clipboard.setData(const ClipboardData(text: prompt));
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Prompt de sugestão copiado!')),
+    );
+  }
+
+  void _showBatchImportDialog(BuildContext context, WidgetRef ref) {
+    final controller = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Importar Exercícios'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'Cole o JSON gerado pela IA abaixo para adicionar vários exercícios de uma vez.',
+              style: TextStyle(fontSize: 12, color: Colors.grey),
+            ),
+            const SizedBox(height: 10),
+            TextField(
+              controller: controller,
+              maxLines: 8,
+              decoration: const InputDecoration(
+                hintText: 'Ex: [\\n  {"name": "...", "category": "..."}\\n]',
+                border: OutlineInputBorder(),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')),
+          ElevatedButton(
+            onPressed: () {
+              if (controller.text.isNotEmpty) {
+                try {
+                  final exercises = AiPromptHelper.parseExerciseListAiResponse(controller.text);
+                  for (var ex in exercises) {
+                    ref.read(exerciseListProvider.notifier).addExercise(ex);
+                  }
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('\${exercises.length} exercícios importados!')),
+                  );
+                } catch (e) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Erro ao importar: \$e')),
+                  );
+                }
+              }
+            },
+            child: const Text('Importar'),
           ),
         ],
       ),
