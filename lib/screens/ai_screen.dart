@@ -64,70 +64,73 @@ class _AiScreenState extends ConsumerState<AiScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(16.0),
-      child: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            const Text(
-              '1. Gerar Prompt para IA',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 10),
-            TextField(
-              controller: _requestController,
-              decoration: const InputDecoration(
-                labelText: 'O que você quer treinar?',
-                hintText: 'Ex: Treino de hipertrofia ABC para 3 dias',
-                border: OutlineInputBorder(),
+    return GestureDetector(
+      onTap: () => FocusScope.of(context).unfocus(),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const Text(
+                '1. Gerar Prompt para IA',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
-              maxLines: 2,
-            ),
-            const SizedBox(height: 10),
-            ElevatedButton.icon(
-              onPressed: _generatePrompt,
-              icon: const Icon(Icons.copy),
-              label: const Text('Gerar e Copiar Prompt'),
-            ),
-            if (_generatedPrompt.isNotEmpty) ...[
               const SizedBox(height: 10),
-              Container(
-                padding: const EdgeInsets.all(8),
-                color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                child: const Text(
-                  'Dica: Cole o prompt no Gemini (web/app), copie a resposta dele e cole abaixo.',
-                  style: TextStyle(fontSize: 12, fontStyle: FontStyle.italic),
+              TextField(
+                controller: _requestController,
+                decoration: const InputDecoration(
+                  labelText: 'O que você quer treinar?',
+                  hintText: 'Ex: Treino de hipertrofia ABC para 3 dias',
+                  border: OutlineInputBorder(),
                 ),
+                maxLines: 2,
+              ),
+              const SizedBox(height: 10),
+              ElevatedButton.icon(
+                onPressed: _generatePrompt,
+                icon: const Icon(Icons.copy),
+                label: const Text('Gerar e Copiar Prompt'),
+              ),
+              if (_generatedPrompt.isNotEmpty) ...[
+                const SizedBox(height: 10),
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                  child: const Text(
+                    'Dica: Cole o prompt no Gemini (web/app), copie a resposta dele e cole abaixo.',
+                    style: TextStyle(fontSize: 12, fontStyle: FontStyle.italic),
+                  ),
+                ),
+              ],
+              const SizedBox(height: 30),
+              const Divider(),
+              const SizedBox(height: 10),
+              const Text(
+                '2. Importar Resposta da IA',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 10),
+              TextField(
+                controller: _responseController,
+                decoration: const InputDecoration(
+                  labelText: 'Cole a resposta da IA aqui',
+                  hintText: 'Cole o JSON gerado pelo Gemini...',
+                  border: OutlineInputBorder(),
+                ),
+                maxLines: 5,
+              ),
+              const SizedBox(height: 10),
+              ElevatedButton.icon(
+                onPressed: _importWorkout,
+                icon: const Icon(Icons.download),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+                ),
+                label: const Text('Importar Treino'),
               ),
             ],
-            const SizedBox(height: 30),
-            const Divider(),
-            const SizedBox(height: 10),
-            const Text(
-              '2. Importar Resposta da IA',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 10),
-            TextField(
-              controller: _responseController,
-              decoration: const InputDecoration(
-                labelText: 'Cole a resposta da IA aqui',
-                hintText: 'Cole o JSON gerado pelo Gemini...',
-                border: OutlineInputBorder(),
-              ),
-              maxLines: 5,
-            ),
-            const SizedBox(height: 10),
-            ElevatedButton.icon(
-              onPressed: _importWorkout,
-              icon: const Icon(Icons.download),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-              ),
-              label: const Text('Importar Treino'),
-            ),
-          ],
+          ),
         ),
       ),
     );
