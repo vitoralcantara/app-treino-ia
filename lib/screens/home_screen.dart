@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/services.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../models/workout.dart';
 import '../services/ai_prompt_helper.dart';
 import '../providers/workout_provider.dart';
@@ -18,6 +19,67 @@ class HomeScreen extends ConsumerStatefulWidget {
 
 class _HomeScreenState extends ConsumerState<HomeScreen> {
   int _selectedIndex = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkDisclaimer();
+  }
+
+  Future<void> _checkDisclaimer() async {
+    final prefs = await SharedPreferences.getInstance();
+    final accepted = prefs.getBool('disclaimer_accepted') ?? false;
+
+    if (!accepted && mounted) {
+      _showDisclaimerDialog();
+    }
+  }
+
+  void _showDisclaimerDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.warning_amber_rounded, color: Colors.orange),
+            SizedBox(width: 10),
+            Text('Aviso Importante'),
+          ],
+        ),
+        content: const SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Os treinos gerados por esta inteligência artificial são apenas sugestões e não substituem o acompanhamento de um profissional de educação física ou médico.',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              SizedBox(height: 16),
+              Text(
+                'A prática de exercícios sem supervisão adequada pode causar lesões. Consulte um profissional antes de iniciar qualquer rotina sugerida.',
+              ),
+              SizedBox(height: 16),
+              Text(
+                'Ao prosseguir, você assume total responsabilidade pela execução dos exercícios e pelos riscos envolvidos.',
+                style: TextStyle(fontSize: 12, color: Colors.grey),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          ElevatedButton(
+            onPressed: () async {
+              final prefs = await SharedPreferences.getInstance();
+              await prefs.setBool('disclaimer_accepted', true);
+              if (context.mounted) Navigator.pop(context);
+            },
+            child: const Text('Eu entendo e aceito os riscos'),
+          ),
+        ],
+      ),
+    );
+  }
 
   static const List<Widget> _widgetOptions = <Widget>[
     WorkoutTab(),

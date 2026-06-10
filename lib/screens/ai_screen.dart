@@ -72,6 +72,27 @@ class _AiScreenState extends ConsumerState<AiScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.orange.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.orange.withValues(alpha: 0.5)),
+                ),
+                child: const Row(
+                  children: [
+                    Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 20),
+                    SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        'Atenção: A IA não substitui um instrutor. Execute com cuidado e respeite seus limites.',
+                        style: TextStyle(fontSize: 12, color: Colors.orangeAccent, fontWeight: FontWeight.w500),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 20),
               const Text(
                 '1. Gerar Prompt para IA',
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
