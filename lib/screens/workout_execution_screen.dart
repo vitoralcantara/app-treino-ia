@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
@@ -22,6 +23,50 @@ class _WorkoutExecutionScreenState extends ConsumerState<WorkoutExecutionScreen>
   final Map<int, List<bool>> _completedSets = {}; // Controla quais séries foram concluídas
   final List<Exercise> _dynamicExercises = []; // Exercícios adicionados na hora
   bool _initialized = false;
+
+  // Variáveis do Temporizador de Descanso
+  Timer? _timer;
+  int _seconds = 0;
+  bool _isTimerRunning = false;
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  void _startTimer() {
+    if (_isTimerRunning) return;
+    setState(() {
+      _isTimerRunning = true;
+    });
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      setState(() {
+        _seconds++;
+      });
+    });
+  }
+
+  void _pauseTimer() {
+    _timer?.cancel();
+    setState(() {
+      _isTimerRunning = false;
+    });
+  }
+
+  void _resetTimer() {
+    _timer?.cancel();
+    setState(() {
+      _seconds = 0;
+      _isTimerRunning = false;
+    });
+  }
+
+  String _formatTime(int totalSeconds) {
+    int minutes = totalSeconds ~/ 60;
+    int seconds = totalSeconds % 60;
+    return '${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
+  }
 
   @override
   void didChangeDependencies() {
@@ -351,6 +396,67 @@ class _WorkoutExecutionScreenState extends ConsumerState<WorkoutExecutionScreen>
       ),
       body: Column(
         children: [
+          // Widget do Temporizador de Descanso
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 20),
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.surfaceContainerHighest,
+              border: Border(bottom: BorderSide(color: Theme.of(context).dividerColor)),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    Icon(Icons.timer_outlined, color: Theme.of(context).colorScheme.primary, size: 20),
+                    const SizedBox(width: 12),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'DESCANSO',
+                          style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.blueGrey, letterSpacing: 1.2),
+                        ),
+                        Text(
+                          _formatTime(_seconds),
+                          style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold, fontFamily: 'monospace'),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+                Row(
+                  children: [
+                    if (!_isTimerRunning)
+                      IconButton.filled(
+                        onPressed: _startTimer,
+                        icon: const Icon(Icons.play_arrow),
+                        style: IconButton.styleFrom(
+                          backgroundColor: Colors.green,
+                          minimumSize: const Size(40, 40),
+                        ),
+                      )
+                    else
+                      IconButton.filled(
+                        onPressed: _pauseTimer,
+                        icon: const Icon(Icons.pause),
+                        style: IconButton.styleFrom(
+                          backgroundColor: Colors.orange,
+                          minimumSize: const Size(40, 40),
+                        ),
+                      ),
+                    const SizedBox(width: 8),
+                    IconButton.outlined(
+                      onPressed: _resetTimer,
+                      icon: const Icon(Icons.refresh),
+                      style: IconButton.styleFrom(minimumSize: const Size(40, 40)),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
           Expanded(
             child: _dynamicExercises.isEmpty
                 ? const Center(child: Text('Este treino não tem exercícios.'))
