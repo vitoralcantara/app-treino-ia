@@ -27,21 +27,21 @@ class NotificationService {
       iOS: initializationSettingsDarwin,
     );
 
-    await flutterLocalNotificationsPlugin.initialize(initializationSettings);
+    await flutterLocalNotificationsPlugin.initialize(settings: initializationSettings);
     
     // Inicializar fuso horário
     tz.initializeTimeZones();
-    final String timeZoneName = await FlutterTimezone.getLocalTimezone();
-    tz.setLocalLocation(tz.getLocation(timeZoneName));
+    final currentTimeZone = await FlutterTimezone.getLocalTimezone();
+    tz.setLocalLocation(tz.getLocation(currentTimeZone.identifier));
   }
 
   Future<void> scheduleRestNotification(int seconds) async {
     await flutterLocalNotificationsPlugin.zonedSchedule(
-      0,
-      'Descanso Finalizado!',
-      'Hora de voltar para a próxima série!',
-      tz.TZDateTime.now(tz.local).add(Duration(seconds: seconds)),
-      const NotificationDetails(
+      id: 0,
+      title: 'Descanso Finalizado!',
+      body: 'Hora de voltar para a próxima série!',
+      scheduledDate: tz.TZDateTime.now(tz.local).add(Duration(seconds: seconds)),
+      notificationDetails: const NotificationDetails(
         android: AndroidNotificationDetails(
           'rest_timer_channel',
           'Temporizador de Descanso',
@@ -57,8 +57,6 @@ class NotificationService {
         ),
       ),
       androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-      uiLocalNotificationDateInterpretation:
-          UILocalNotificationDateInterpretation.absoluteTime,
     );
   }
 
