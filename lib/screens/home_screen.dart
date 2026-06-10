@@ -73,55 +73,221 @@ class WorkoutTab extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final workouts = ref.watch(workoutListProvider);
+    final sessions = ref.watch(sessionListProvider);
+    
+    final totalExercises = workouts.fold<int>(0, (sum, w) => sum + w.exercises.length);
+
+    // Sugestão de próximo treino
+    Workout? nextWorkout;
+    if (workouts.isNotEmpty) {
+      if (sessions.isEmpty) {
+        nextWorkout = workouts.first;
+      } else {
+        final lastSession = sessions.first;
+        final lastWorkoutIndex = workouts.indexWhere((w) => w.id == lastSession.workoutId);
+        if (lastWorkoutIndex != -1) {
+          final nextIndex = (lastWorkoutIndex + 1) % workouts.length;
+          nextWorkout = workouts[nextIndex];
+        } else {
+          nextWorkout = workouts.first;
+        }
+      }
+    }
 
     return Scaffold(
       body: workouts.isEmpty
           ? const Center(child: Text('Nenhum treino criado ainda.'))
-          : ListView.builder(
-              itemCount: workouts.length,
-              itemBuilder: (context, index) {
-                final workout = workouts[index];
-                return ListTile(
-                  title: Text(workout.name),
-                  subtitle: Text('${workout.exercises.length} exercícios'),
-                  leading: IconButton(
-                    icon: const Icon(Icons.share, size: 20),
-                    tooltip: 'Exportar para IA',
-                    onPressed: () {
-                      final prompt = AiPromptHelper.generateExportWorkoutPrompt(workout);
-                      Clipboard.setData(ClipboardData(text: prompt));
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Treino copiado para levar ao Gemini!')),
+          : Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Container(
+                    padding: const EdgeInsets.all(20.0),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [Colors.blue.shade800, Colors.blue.shade500],
+                      ),
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.blue.withValues(alpha: 0.4),
+                          blurRadius: 12,
+                          offset: const Offset(0, 6),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Sua Rotina ABC',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                Text(
+                                  'Total de exercícios na semana',
+                                  style: TextStyle(
+                                    color: Colors.white70,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withValues(alpha: 0.2),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Column(
+                                children: [
+                                  Text(
+                                    '$totalExercises',
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 24,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  const Text(
+                                    'Total',
+                                    style: TextStyle(
+                                      color: Colors.white70,
+                                      fontSize: 10,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                        if (nextWorkout != null) ...[
+                          const SizedBox(height: 20),
+                          const Divider(color: Colors.white24),
+                          const SizedBox(height: 10),
+                          Row(
+                            children: [
+                              const Icon(Icons.next_plan, color: Colors.white, size: 20),
+                              const SizedBox(width: 8),
+                              const Text(
+                                'Sugestão para hoje:',
+                                style: TextStyle(color: Colors.white70, fontSize: 14),
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  nextWorkout.name,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              ElevatedButton(
+                                onPressed: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => WorkoutExecutionScreen(workout: nextWorkout!),
+                                    ),
+                                  );
+                                },
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.white,
+                                  foregroundColor: Colors.blue.shade800,
+                                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                                  minimumSize: const Size(0, 36),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                ),
+                                child: const Text('Iniciar', style: TextStyle(fontWeight: FontWeight.bold)),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ),
+                const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 16.0),
+                  child: Row(
+                    children: [
+                      Text(
+                        'Meus Treinos',
+                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                      ),
+                    ],
+                  ),
+                ),
+                Expanded(
+                  child: ListView.builder(
+                    itemCount: workouts.length,
+                    itemBuilder: (context, index) {
+                      final workout = workouts[index];
+                      return Card(
+                        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        elevation: 2,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        child: ListTile(
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                          title: Text(
+                            workout.name,
+                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                          ),
+                          subtitle: Text('${workout.exercises.length} exercícios'),
+                          leading: Container(
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              color: Theme.of(context).colorScheme.primaryContainer,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Icon(
+                              Icons.fitness_center,
+                              color: Theme.of(context).colorScheme.primary,
+                            ),
+                          ),
+                          trailing: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              IconButton(
+                                icon: const Icon(Icons.edit_note, color: Colors.blueGrey),
+                                tooltip: 'Editar',
+                                onPressed: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => WorkoutDetailsScreen(workoutId: workout.id!),
+                                    ),
+                                  );
+                                },
+                              ),
+                              const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
+                            ],
+                          ),
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => WorkoutExecutionScreen(workout: workout),
+                              ),
+                            );
+                          },
+                        ),
                       );
                     },
                   ),
-                  trailing: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      IconButton(
-                        icon: const Icon(Icons.edit),
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => WorkoutDetailsScreen(workoutId: workout.id!),
-                            ),
-                          );
-                        },
-                      ),
-                      const Icon(Icons.play_arrow),
-                    ],
-                  ),
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => WorkoutExecutionScreen(workout: workout),
-                      ),
-                    );
-                  },
-                );
-              },
+                ),
+              ],
             ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
