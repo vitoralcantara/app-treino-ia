@@ -8,6 +8,7 @@ import '../models/workout_session.dart';
 import '../models/exercise_set.dart';
 import '../models/exercise.dart';
 import '../providers/workout_provider.dart';
+import '../services/notification_service.dart';
 
 class WorkoutExecutionScreen extends ConsumerStatefulWidget {
   final Workout workout;
@@ -28,10 +29,12 @@ class _WorkoutExecutionScreenState extends ConsumerState<WorkoutExecutionScreen>
   Timer? _timer;
   int _seconds = 0;
   bool _isTimerRunning = false;
+  int _selectedRestTime = 60; // Tempo de descanso padrão: 60s
 
   @override
   void dispose() {
     _timer?.cancel();
+    NotificationService().cancelAllNotifications();
     super.dispose();
   }
 
@@ -40,15 +43,23 @@ class _WorkoutExecutionScreenState extends ConsumerState<WorkoutExecutionScreen>
     setState(() {
       _isTimerRunning = true;
     });
+    
+    // Agendar notificação para o fim do tempo selecionado
+    NotificationService().scheduleRestNotification(_selectedRestTime - _seconds > 0 ? _selectedRestTime - _seconds : _selectedRestTime);
+
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       setState(() {
         _seconds++;
+        if (_seconds >= _selectedRestTime) {
+          _pauseTimer();
+        }
       });
     });
   }
 
   void _pauseTimer() {
     _timer?.cancel();
+    NotificationService().cancelAllNotifications();
     setState(() {
       _isTimerRunning = false;
     });
@@ -56,6 +67,7 @@ class _WorkoutExecutionScreenState extends ConsumerState<WorkoutExecutionScreen>
 
   void _resetTimer() {
     _timer?.cancel();
+    NotificationService().cancelAllNotifications();
     setState(() {
       _seconds = 0;
       _isTimerRunning = false;
@@ -414,13 +426,32 @@ class _WorkoutExecutionScreenState extends ConsumerState<WorkoutExecutionScreen>
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
-                          'DESCANSO',
-                          style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.blueGrey, letterSpacing: 1.2),
+                        DropdownButtonHideUnderline(
+                          child: DropdownButton<int>(
+                            value: _selectedRestTime,
+                            isDense: true,
+                            style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.blueGrey),
+                            items: [30, 45, 60, 90, 120].map((int value) {
+                              return DropdownMenuItem<int>(
+                                value: value,
+                                child: Text('${value}s DESCANSO'),
+                              );
+                            }).toList(),
+                            onChanged: _isTimerRunning ? null : (newValue) {
+                              setState(() {
+                                _selectedRestTime = newValue!;
+                              });
+                            },
+                          ),
                         ),
                         Text(
                           _formatTime(_seconds),
-                          style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold, fontFamily: 'monospace'),
+                          style: TextStyle(
+                            fontSize: 28, 
+                            fontWeight: FontWeight.bold, 
+                            fontFamily: 'monospace',
+                            color: _seconds >= _selectedRestTime ? Colors.redAccent : null,
+                          ),
                         ),
                       ],
                     ),
