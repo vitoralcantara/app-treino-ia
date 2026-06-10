@@ -4,6 +4,7 @@ import '../models/exercise.dart';
 import '../models/workout.dart';
 import '../models/workout_session.dart';
 import '../models/exercise_set.dart';
+import '../models/routine.dart';
 
 class DatabaseHelper {
   static final DatabaseHelper instance = DatabaseHelper._init();
@@ -23,9 +24,9 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 6, // Aumentei a versão para 6
+      version: 7, // Aumentei a versão para 7
       onCreate: _createDB,
-      onUpgrade: _upgradeDB, // Adicionado método de atualização
+      onUpgrade: _upgradeDB,
     );
   }
 
@@ -45,6 +46,27 @@ class DatabaseHelper {
     }
     if (oldVersion < 6) {
       await db.execute('ALTER TABLE workouts ADD COLUMN is_active INTEGER DEFAULT 1');
+    }
+    if (oldVersion < 7) {
+      await db.execute('''
+        CREATE TABLE routines (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          name TEXT NOT NULL,
+          created_at TEXT NOT NULL,
+          is_active INTEGER DEFAULT 1
+        )
+      ''');
+      await db.execute('ALTER TABLE workouts ADD COLUMN routine_id INTEGER');
+      
+      // Criar uma rotina padrão para os treinos existentes
+      final now = DateTime.now().toIso8601String();
+      final routineId = await db.insert('routines', {
+        'name': 'Minha Rotina',
+        'created_at': now,
+        'is_active': 1
+      });
+      
+      await db.update('workouts', {'routine_id': routineId}, where: 'is_active = 1');
     }
   }
 
@@ -70,10 +92,21 @@ class DatabaseHelper {
     ''');
 
     await db.execute('''
-      CREATE TABLE workouts (
+      CREATE TABLE routines (
         id $idType,
         name $textType,
+        created_at $textType,
         is_active INTEGER DEFAULT 1
+      )
+    ''');
+
+    await db.execute('''
+      CREATE TABLE workouts (
+        id $idType,
+        routine_id INTEGER,
+        name $textType,
+        is_active INTEGER DEFAULT 1,
+        FOREIGN KEY (routine_id) REFERENCES routines (id) ON DELETE CASCADE
       )
     ''');
 
@@ -111,7 +144,6 @@ class DatabaseHelper {
       )
     ''');
 
-    // Seed some basic exercises
     await _seedExercises(db);
   }
 
@@ -128,6 +160,76 @@ class DatabaseHelper {
     for (var exercise in basicExercises) {
       await db.insert('exercises', exercise);
     }
+  }
+
+  // --- Routine Operations ---
+  Future<int> createRoutine(String name) async {
+    final db = await instance.database;
+    return await db.insert('routines', {
+      'name': name,
+      'created_at': DateTime.now().toIso8601String(),
+      'is_active': 1
+    });
+  }
+
+  Future<void> archiveCurrentRoutine() async {
+    final db = await instance.database;
+    await db.transaction((txn) async {
+      await txn.update('routines', {'is_active': 0}, where: 'is_active = 1');
+      await txn.update('workouts', {'is_active': 0}, where: 'is_active = 1');
+    });
+  }
+
+  Future<void> activateRoutine(int routineId) async {
+    final db = await instance.database;
+    await db.transaction((txn) async {
+      // Arquivar o que estiver ativo primeiro
+      await txn.update('routines', {'is_active': 0}, where: 'is_active = 1');
+      await txn.update('workouts', {'is_active': 0}, where: 'is_active = 1');
+      
+      // Ativar a nova
+      await txn.update('routines', {'is_active': 1}, where: 'id = ?', whereArgs: [routineId]);
+      await txn.update('workouts', {'is_active': 1}, where: 'routine_id = ?', whereArgs: [routineId]);
+    });
+  }
+
+  Future<List<Routine>> getArchivedRoutines() async {
+    final db = await instance.database;
+    final result = await db.query('routines', where: 'is_active = 0', orderBy: 'created_at DESC');
+    
+    List<Routine> routines = [];
+    for (var row in result) {
+      final id = row['id'] as int;
+      final workoutsRows = await db.query('workouts', where: 'routine_id = ?', whereArgs: [id]);
+      
+      final List<Workout> workouts = [];
+      for (var wRow in workoutsRows) {
+        final wId = wRow['id'] as int;
+        final exercisesRows = await db.rawQuery('''
+          SELECT e.* FROM exercises e
+          JOIN workout_exercises we ON e.id = we.exercise_id
+          WHERE we.workout_id = ?
+          ORDER BY we.position
+        ''', [wId]);
+        
+        workouts.add(Workout(
+          id: wId,
+          routineId: id,
+          name: wRow['name'] as String,
+          isActive: false,
+          exercises: exercisesRows.map((e) => Exercise.fromJson(e)).toList(),
+        ));
+      }
+
+      routines.add(Routine(
+        id: id,
+        name: row['name'] as String,
+        createdAt: DateTime.parse(row['created_at'] as String),
+        isActive: false,
+        workouts: workouts,
+      ));
+    }
+    return routines;
   }
 
   // --- Exercise Operations ---
@@ -170,7 +272,20 @@ class DatabaseHelper {
   // --- Workout Operations ---
   Future<int> createWorkout(Workout workout) async {
     final db = await instance.database;
+    
+    // Garantir que temos uma rotina ativa se não houver
+    int? routineId = workout.routineId;
+    if (routineId == null) {
+      final activeRoutines = await db.query('routines', where: 'is_active = 1', limit: 1);
+      if (activeRoutines.isNotEmpty) {
+        routineId = activeRoutines.first['id'] as int;
+      } else {
+        routineId = await createRoutine('Nova Rotina');
+      }
+    }
+
     final id = await db.insert('workouts', {
+      'routine_id': routineId,
       'name': workout.name,
       'is_active': workout.isActive ? 1 : 0,
     });
@@ -192,11 +307,6 @@ class DatabaseHelper {
     return id;
   }
 
-  Future<void> archiveAllWorkouts() async {
-    final db = await instance.database;
-    await db.update('workouts', {'is_active': 0});
-  }
-
   Future<void> toggleWorkoutActivity(int id, bool isActive) async {
     final db = await instance.database;
     await db.update('workouts', {'is_active': isActive ? 1 : 0}, where: 'id = ?', whereArgs: [id]);
@@ -204,8 +314,6 @@ class DatabaseHelper {
 
   Future<void> addExerciseToWorkout(int workoutId, int exerciseId) async {
     final db = await instance.database;
-    
-    // Get current max position
     final result = await db.rawQuery(
       'SELECT MAX(position) as max_pos FROM workout_exercises WHERE workout_id = ?',
       [workoutId],
@@ -250,6 +358,7 @@ class DatabaseHelper {
 
       workouts.add(Workout(
         id: id,
+        routineId: row['routine_id'] as int?,
         name: row['name'] as String,
         isActive: (row['is_active'] as int? ?? 1) == 1,
         exercises: exercisesRows.map((e) => Exercise.fromJson(e)).toList(),

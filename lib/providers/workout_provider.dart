@@ -3,6 +3,7 @@ import '../data/database_helper.dart';
 import '../models/workout.dart';
 import '../models/exercise.dart';
 import '../models/workout_session.dart';
+import '../models/routine.dart';
 
 final databaseProvider = Provider((ref) => DatabaseHelper.instance);
 
@@ -20,19 +21,19 @@ class WorkoutListNotifier extends Notifier<List<Workout>> {
 
   Future<void> archiveCurrentRoutine() async {
     final db = ref.read(databaseProvider);
-    await db.archiveAllWorkouts();
+    await db.archiveCurrentRoutine();
     await _load();
   }
 
-  Future<void> toggleWorkoutActivity(int id, bool isActive) async {
+  Future<void> activateRoutine(int routineId) async {
     final db = ref.read(databaseProvider);
-    await db.toggleWorkoutActivity(id, isActive);
+    await db.activateRoutine(routineId);
     await _load();
   }
 
-  Future<List<Workout>> getArchivedWorkouts() async {
+  Future<List<Routine>> getArchivedRoutines() async {
     final db = ref.read(databaseProvider);
-    return await db.getAllWorkouts(activeOnly: false);
+    return await db.getArchivedRoutines();
   }
 
   Future<void> addWorkout(Workout workout) async {

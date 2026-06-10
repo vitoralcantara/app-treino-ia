@@ -5,6 +5,7 @@ import '../services/ai_prompt_helper.dart';
 import '../providers/workout_provider.dart';
 import '../providers/profile_provider.dart';
 import '../models/exercise.dart';
+import '../models/workout.dart';
 import 'exercise_library_screen.dart';
 
 class AiScreen extends ConsumerStatefulWidget {
@@ -40,17 +41,28 @@ class _AiScreenState extends ConsumerState<AiScreen> {
     );
   }
 
-  void _importWorkout() {
+  void _importWorkout() async {
     if (_responseController.text.isEmpty) return;
 
     try {
       final workouts = AiPromptHelper.parseAiResponse(_responseController.text);
       
-      // Arquivar a rotina atual antes de importar a nova
-      ref.read(workoutListProvider.notifier).archiveCurrentRoutine();
+      // 1. Arquivar a rotina atual (o grupo inteiro)
+      await ref.read(workoutListProvider.notifier).archiveCurrentRoutine();
       
+      // 2. Criar uma nova rotina no banco
+      final db = ref.read(databaseProvider);
+      final newRoutineId = await db.createRoutine('Rotina IA - ${_formatDate(DateTime.now())}');
+      
+      // 3. Adicionar os novos treinos vinculados a essa rotina
       for (var workout in workouts) {
-        ref.read(workoutListProvider.notifier).addWorkout(workout);
+        final workoutWithRoutine = Workout(
+          name: workout.name,
+          exercises: workout.exercises,
+          routineId: newRoutineId,
+          isActive: true,
+        );
+        await ref.read(workoutListProvider.notifier).addWorkout(workoutWithRoutine);
       }
       
       setState(() {
@@ -71,6 +83,10 @@ class _AiScreenState extends ConsumerState<AiScreen> {
         SnackBar(content: Text('Erro ao importar: $e')),
       );
     }
+  }
+
+  String _formatDate(DateTime date) {
+    return '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
   }
 
   @override
