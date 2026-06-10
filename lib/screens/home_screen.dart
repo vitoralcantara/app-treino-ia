@@ -81,13 +81,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
   }
 
-  static const List<Widget> _widgetOptions = <Widget>[
-    WorkoutTab(),
-    HistoryTab(),
-    AiScreen(),
-    ProfileScreen(),
-  ];
-
   void _onItemTapped(int index) {
     setState(() {
       _selectedIndex = index;
@@ -100,7 +93,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       appBar: AppBar(
         title: const Text('Meu Treino'),
       ),
-      body: _widgetOptions.elementAt(_selectedIndex),
+      body: IndexedStack(
+        index: _selectedIndex,
+        children: const [
+          WorkoutTab(),
+          HistoryTab(),
+          AiScreen(),
+          ProfileScreen(),
+        ],
+      ),
       bottomNavigationBar: BottomNavigationBar(
         items: const <BottomNavigationBarItem>[
           BottomNavigationBarItem(

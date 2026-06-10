@@ -1,14 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../providers/workout_provider.dart';
 import 'home_screen.dart';
 
-class SplashScreen extends StatefulWidget {
+class SplashScreen extends ConsumerStatefulWidget {
   const SplashScreen({super.key});
 
   @override
-  State<SplashScreen> createState() => _SplashScreenState();
+  ConsumerState<SplashScreen> createState() => _SplashScreenState();
 }
 
-class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderStateMixin {
+class _SplashScreenState extends ConsumerState<SplashScreen> with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _fadeAnimation;
   late Animation<double> _scaleAnimation;
@@ -16,6 +18,10 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
   @override
   void initState() {
     super.initState();
+
+    // Iniciar carregamento de dados em segundo plano enquanto a animação roda
+    _preloadData();
+
     _controller = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 2000),
@@ -39,6 +45,14 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
       });
     });
   }
+
+  void _preloadData() {
+    // Acessar os providers força a inicialização e o carregamento do banco de dados
+    ref.read(workoutListProvider);
+    ref.read(exerciseListProvider);
+    ref.read(sessionListProvider);
+  }
+
 
   @override
   void dispose() {
