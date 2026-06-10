@@ -290,11 +290,7 @@ class WorkoutTab extends ConsumerWidget {
               ],
             ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          // TODO: Implement manual workout creation
-          // For now, we rely on AI to create them or a simple dialog
-          _showAddWorkoutDialog(context, ref);
-        },
+        onPressed: () => _showAddWorkoutDialog(context, ref),
         child: const Icon(Icons.add),
       ),
     );
