@@ -23,7 +23,7 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 5, // Aumentei a versão para 5
+      version: 6, // Aumentei a versão para 6
       onCreate: _createDB,
       onUpgrade: _upgradeDB, // Adicionado método de atualização
     );
@@ -42,6 +42,9 @@ class DatabaseHelper {
     if (oldVersion < 5) {
       await db.execute('ALTER TABLE exercises ADD COLUMN suggested_sets INTEGER');
       await db.execute('ALTER TABLE exercises ADD COLUMN suggested_reps INTEGER');
+    }
+    if (oldVersion < 6) {
+      await db.execute('ALTER TABLE workouts ADD COLUMN is_active INTEGER DEFAULT 1');
     }
   }
 
@@ -69,7 +72,8 @@ class DatabaseHelper {
     await db.execute('''
       CREATE TABLE workouts (
         id $idType,
-        name $textType
+        name $textType,
+        is_active INTEGER DEFAULT 1
       )
     ''');
 
@@ -166,7 +170,10 @@ class DatabaseHelper {
   // --- Workout Operations ---
   Future<int> createWorkout(Workout workout) async {
     final db = await instance.database;
-    final id = await db.insert('workouts', {'name': workout.name});
+    final id = await db.insert('workouts', {
+      'name': workout.name,
+      'is_active': workout.isActive ? 1 : 0,
+    });
     
     for (int i = 0; i < workout.exercises.length; i++) {
       final exercise = workout.exercises[i];
@@ -183,6 +190,16 @@ class DatabaseHelper {
       });
     }
     return id;
+  }
+
+  Future<void> archiveAllWorkouts() async {
+    final db = await instance.database;
+    await db.update('workouts', {'is_active': 0});
+  }
+
+  Future<void> toggleWorkoutActivity(int id, bool isActive) async {
+    final db = await instance.database;
+    await db.update('workouts', {'is_active': isActive ? 1 : 0}, where: 'id = ?', whereArgs: [id]);
   }
 
   Future<void> addExerciseToWorkout(int workoutId, int exerciseId) async {
@@ -214,13 +231,12 @@ class DatabaseHelper {
   Future<void> deleteWorkout(int id) async {
     final db = await instance.database;
     await db.delete('workouts', where: 'id = ?', whereArgs: [id]);
-    // Cascade delete handles workout_exercises if configured correctly, 
-    // but sqflite needs manual delete or pragma foreign_keys = ON
   }
 
-  Future<List<Workout>> getAllWorkouts() async {
+  Future<List<Workout>> getAllWorkouts({bool? activeOnly}) async {
     final db = await instance.database;
-    final result = await db.query('workouts');
+    final String? where = activeOnly == null ? null : (activeOnly ? 'is_active = 1' : 'is_active = 0');
+    final result = await db.query('workouts', where: where);
     
     List<Workout> workouts = [];
     for (var row in result) {
@@ -235,6 +251,7 @@ class DatabaseHelper {
       workouts.add(Workout(
         id: id,
         name: row['name'] as String,
+        isActive: (row['is_active'] as int? ?? 1) == 1,
         exercises: exercisesRows.map((e) => Exercise.fromJson(e)).toList(),
       ));
     }

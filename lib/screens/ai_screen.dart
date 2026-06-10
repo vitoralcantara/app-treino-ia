@@ -46,6 +46,9 @@ class _AiScreenState extends ConsumerState<AiScreen> {
     try {
       final workouts = AiPromptHelper.parseAiResponse(_responseController.text);
       
+      // Arquivar a rotina atual antes de importar a nova
+      ref.read(workoutListProvider.notifier).archiveCurrentRoutine();
+      
       for (var workout in workouts) {
         ref.read(workoutListProvider.notifier).addWorkout(workout);
       }

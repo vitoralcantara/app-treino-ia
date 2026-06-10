@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/user_profile.dart';
 import '../providers/profile_provider.dart';
+import 'archived_workouts_screen.dart';
 
 class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key});
@@ -108,7 +109,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             const SizedBox(height: 10),
             DropdownButtonFormField<String>(
               decoration: const InputDecoration(labelText: 'Gênero', border: OutlineInputBorder()),
-              initialValue: _selectedGender,
+              value: _selectedGender,
               items: _genderOptions.map((String value) {
                 return DropdownMenuItem<String>(
                   value: value,
@@ -124,7 +125,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             const SizedBox(height: 10),
             DropdownButtonFormField<String>(
               decoration: const InputDecoration(labelText: 'Nível de Experiência', border: OutlineInputBorder()),
-              initialValue: _selectedExperience,
+              value: _selectedExperience,
               items: _experienceOptions.map((String value) {
                 return DropdownMenuItem<String>(
                   value: value,
@@ -140,7 +141,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             const SizedBox(height: 10),
             DropdownButtonFormField<String>(
               decoration: const InputDecoration(labelText: 'Objetivo Principal', border: OutlineInputBorder()),
-              initialValue: _selectedGoal,
+              value: _selectedGoal,
               items: _goalOptions.map((String value) {
                 return DropdownMenuItem<String>(
                   value: value,
@@ -192,6 +193,27 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             ),
 
             const SizedBox(height: 30),
+            const Text(
+              'Configurações e Histórico',
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 10),
+            Card(
+              child: ListTile(
+                leading: const Icon(Icons.history_edu, color: Colors.orangeAccent),
+                title: const Text('Treinos Anteriores'),
+                subtitle: const Text('Ver e retomar rotinas arquivadas'),
+                trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const ArchivedWorkoutsScreen()),
+                  );
+                },
+              ),
+            ),
+
+            const SizedBox(height: 30),
             ElevatedButton.icon(
               icon: const Icon(Icons.save),
               onPressed: _saveProfile,
@@ -204,4 +226,3 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     );
   }
 }
-

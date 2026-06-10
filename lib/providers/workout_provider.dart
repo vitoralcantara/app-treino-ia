@@ -15,7 +15,24 @@ class WorkoutListNotifier extends Notifier<List<Workout>> {
 
   Future<void> _load() async {
     final db = ref.read(databaseProvider);
-    state = await db.getAllWorkouts();
+    state = await db.getAllWorkouts(activeOnly: true);
+  }
+
+  Future<void> archiveCurrentRoutine() async {
+    final db = ref.read(databaseProvider);
+    await db.archiveAllWorkouts();
+    await _load();
+  }
+
+  Future<void> toggleWorkoutActivity(int id, bool isActive) async {
+    final db = ref.read(databaseProvider);
+    await db.toggleWorkoutActivity(id, isActive);
+    await _load();
+  }
+
+  Future<List<Workout>> getArchivedWorkouts() async {
+    final db = ref.read(databaseProvider);
+    return await db.getAllWorkouts(activeOnly: false);
   }
 
   Future<void> addWorkout(Workout workout) async {
