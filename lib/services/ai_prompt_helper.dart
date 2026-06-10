@@ -51,7 +51,9 @@ Responda EXCLUSIVAMENTE com o código JSON puro, sem textos antes ou depois, seg
     "exercises": [
       {
         "name": "Supino Reto",
-        "category": "Peito"
+        "category": "Peito",
+        "suggested_sets": 4,
+        "suggested_reps": 10
       }
     ]
   },
@@ -60,7 +62,9 @@ Responda EXCLUSIVAMENTE com o código JSON puro, sem textos antes ou depois, seg
     "exercises": [
       {
         "name": "Puxada Alta",
-        "category": "Costas"
+        "category": "Costas",
+        "suggested_sets": 3,
+        "suggested_reps": 12
       }
     ]
   }

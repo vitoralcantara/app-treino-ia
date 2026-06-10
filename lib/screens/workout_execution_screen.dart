@@ -129,10 +129,15 @@ class _WorkoutExecutionScreenState extends ConsumerState<WorkoutExecutionScreen>
           )).toList();
           _completedSets[exercise.id!] = List.generate(previousSets.length, (_) => false);
         } else {
-          _setsByExercise[exercise.id!] = [
-            ExerciseSet(reps: 10, weight: 0, exerciseId: exercise.id),
-          ];
-          _completedSets[exercise.id!] = [false];
+          // Usar sugestão da IA se disponível, senão padrão
+          final suggestedSets = exercise.suggestedSets ?? 3;
+          final suggestedReps = exercise.suggestedReps ?? 10;
+          
+          _setsByExercise[exercise.id!] = List.generate(
+            suggestedSets, 
+            (_) => ExerciseSet(reps: suggestedReps, weight: 0, exerciseId: exercise.id),
+          );
+          _completedSets[exercise.id!] = List.generate(suggestedSets, (_) => false);
         }
       }
     });
