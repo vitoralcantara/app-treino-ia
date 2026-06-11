@@ -7,7 +7,7 @@ class AiService {
 
   AiService({required this.apiKey}) {
     _model = GenerativeModel(
-      model: 'gemini-2.0-flash',
+      model: 'gemini-1.5-flash',
       apiKey: apiKey,
       generationConfig: GenerationConfig(
         temperature: 0.2, // Baixa temperatura para respostas mais determinísticas (JSON estruturado)
