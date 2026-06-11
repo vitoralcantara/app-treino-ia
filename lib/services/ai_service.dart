@@ -1,4 +1,5 @@
 import 'package:google_generative_ai/google_generative_ai.dart';
+import 'document_service.dart';
 
 class AiService {
   final String apiKey;
@@ -14,10 +15,21 @@ class AiService {
     );
   }
 
-  Future<String> generateWorkout(String prompt) async {
+  Future<String> generateWorkout(String prompt, {List<ProcessedDocument>? documents}) async {
     try {
-      final content = [Content.text(prompt)];
-      final response = await _model.generateContent(content);
+      final List<Part> parts = [TextPart(prompt)];
+
+      if (documents != null && documents.isNotEmpty) {
+        for (var doc in documents) {
+          if (doc.type == DocumentType.pdf && doc.bytes != null) {
+            parts.add(DataPart('application/pdf', doc.bytes!));
+          } else if (doc.textContent != null) {
+            parts.add(TextPart('\n--- CONTEÚDO DO ARQUIVO: ${doc.fileName} ---\n${doc.textContent}\n--- FIM DO ARQUIVO ---'));
+          }
+        }
+      }
+
+      final response = await _model.generateContent([Content.multi(parts)]);
       
       if (response.text == null || response.text!.isEmpty) {
         throw Exception('A IA não retornou nenhuma resposta.');

@@ -8,6 +8,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:showcaseview/showcaseview.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/ai_prompt_helper.dart';
+import '../services/document_service.dart';
 import '../providers/workout_provider.dart';
 import '../providers/profile_provider.dart';
 import '../providers/ai_provider.dart';
@@ -39,6 +40,7 @@ class _AiScreenContentState extends ConsumerState<AiScreenContent> {
   final _responseController = TextEditingController();
   String _generatedPrompt = '';
   bool _isLoading = false;
+  final List<File> _selectedFiles = [];
 
   // Keys para o tutorial
   final GlobalKey _step1Key = GlobalKey();
@@ -60,6 +62,34 @@ class _AiScreenContentState extends ConsumerState<AiScreenContent> {
       ShowCaseWidget.of(context).startShowCase([_step1Key, _step2Key, _step3Key]);
       await prefs.setBool('tutorial_ai_shown', true);
     }
+  }
+
+  Future<void> _pickDocuments() async {
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['pdf', 'docx', 'xlsx', 'xls', 'txt'],
+        allowMultiple: true,
+      );
+
+      if (result != null) {
+        setState(() {
+          _selectedFiles.addAll(result.paths.where((path) => path != null).map((path) => File(path!)));
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Erro ao selecionar arquivos: $e')),
+        );
+      }
+    }
+  }
+
+  void _removeFile(int index) {
+    setState(() {
+      _selectedFiles.removeAt(index);
+    });
   }
 
   static const String _jsonInstructionsText = '''
@@ -133,6 +163,14 @@ Formato Exato:
     setState(() => _isLoading = true);
 
     try {
+      final List<ProcessedDocument> processedDocs = [];
+      final docService = DocumentService();
+      
+      for (var file in _selectedFiles) {
+        final doc = await docService.processFile(file);
+        processedDocs.add(doc);
+      }
+
       final profile = ref.read(profileProvider);
       final exercisesAsync = ref.read(exerciseListProvider);
       final List<Exercise> availableExercises = exercisesAsync.maybeWhen(
@@ -146,11 +184,12 @@ Formato Exato:
         availableExercises,
       );
 
-      final response = await aiService.generateWorkout(prompt);
+      final response = await aiService.generateWorkout(prompt, documents: processedDocs);
       
       setState(() {
         _responseController.text = response;
         _isLoading = false;
+        _selectedFiles.clear(); // Limpar arquivos após sucesso
       });
 
       // Se a resposta parece ser um JSON válido, já podemos processar ou pelo menos avisar
@@ -334,6 +373,47 @@ Formato Exato:
                 ),
                 maxLines: 2,
               ),
+              const SizedBox(height: 10),
+              
+              // Seção de Arquivos
+              if (_selectedFiles.isNotEmpty) ...[
+                const Text('Arquivos Anexados:', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 5),
+                Container(
+                  constraints: const BoxConstraints(maxHeight: 150),
+                  child: ListView.builder(
+                    shrinkWrap: true,
+                    itemCount: _selectedFiles.length,
+                    itemBuilder: (context, index) {
+                      final file = _selectedFiles[index];
+                      return ListTile(
+                        dense: true,
+                        leading: const Icon(Icons.insert_drive_file, size: 20),
+                        title: Text(
+                          file.path.split('/').last,
+                          style: const TextStyle(fontSize: 12),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        trailing: IconButton(
+                          icon: const Icon(Icons.close, size: 16),
+                          onPressed: () => _removeFile(index),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+                const SizedBox(height: 10),
+              ],
+              
+              OutlinedButton.icon(
+                onPressed: _isLoading ? null : _pickDocuments,
+                icon: const Icon(Icons.attach_file),
+                label: const Text('Anexar PDF, Word, Excel ou Texto'),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                ),
+              ),
+
               const SizedBox(height: 10),
               if (ref.watch(aiServiceProvider) != null) ...[
                 Showcase(

@@ -51,6 +51,8 @@ dependencies:
   showcaseview: ^5.0.2
   google_generative_ai: ^0.4.7
   flutter_secure_storage: ^10.3.1
+  docx_to_text: ^1.0.1
+  excel: ^4.0.6
 
 dev_dependencies:
   flutter_test:
