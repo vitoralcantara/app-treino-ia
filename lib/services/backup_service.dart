@@ -34,8 +34,13 @@ class BackupService {
     final file = File('${directory.path}/treino_ia_backup_${_getFormattedDate()}.json');
     await file.writeAsString(jsonString);
 
-    // Abrir menu de compartilhamento
-    await Share.shareXFiles([XFile(file.path)], text: 'Meu Backup de Treinos - Treino IA');
+    // Abrir menu de compartilhamento (Usa API atualizada do share_plus v13+)
+    await SharePlus.instance.share(
+      ShareParams(
+        files: [XFile(file.path)],
+        text: 'Meu Backup de Treinos - Treino IA',
+      ),
+    );
     
     // Atualizar data do último backup
     await _updateLastBackupDate();
