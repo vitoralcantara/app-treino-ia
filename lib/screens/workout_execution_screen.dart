@@ -2,6 +2,7 @@ import 'dart:io';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../models/workout.dart';
 import '../models/workout_session.dart';
@@ -30,6 +31,22 @@ class _WorkoutExecutionScreenState extends ConsumerState<WorkoutExecutionScreen>
   int _seconds = 0;
   bool _isTimerRunning = false;
   int _selectedRestTime = 60; // Tempo de descanso padrão: 60s
+  static const String _restTimeKey = 'selected_rest_time';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadRestTimePreference();
+  }
+
+  Future<void> _loadRestTimePreference() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (mounted) {
+      setState(() {
+        _selectedRestTime = prefs.getInt(_restTimeKey) ?? 60;
+      });
+    }
+  }
 
   @override
   void dispose() {
