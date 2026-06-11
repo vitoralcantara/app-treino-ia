@@ -461,7 +461,9 @@ class _WorkoutExecutionScreenState extends ConsumerState<WorkoutExecutionScreen>
                     );
                   }
                 });
-                Navigator.pop(context);
+                if (context.mounted) {
+                  Navigator.of(context).pop();
+                }
               }
             },
             child: const Text('Salvar'),
