@@ -467,6 +467,72 @@ Future<void> activateRoutine(int routineId) async {
     return result.first['count'] as int? ?? 0;
   }
 
+  Future<void> restoreFromBackup(Map<String, dynamic> backupData) async {
+    final db = await instance.database;
+    
+    await db.transaction((txn) async {
+      // 1. Limpar todas as tabelas (ordem reversa de dependência)
+      await txn.delete('exercise_sets');
+      await txn.delete('workout_sessions');
+      await txn.delete('workout_exercises');
+      await txn.delete('workouts');
+      await txn.delete('routines');
+      await txn.delete('exercises');
+
+      // 2. Restaurar Exercícios
+      final List<dynamic> exercises = backupData['exercises'] ?? [];
+      for (var exJson in exercises) {
+        await txn.insert('exercises', exJson as Map<String, dynamic>);
+      }
+
+      // 3. Restaurar Rotinas
+      final List<dynamic> routines = backupData['archived_routines'] ?? [];
+      for (var rJson in routines) {
+        // Remove 'workouts' se vier no JSON pois é carregado dinamicamente
+        final Map<String, dynamic> cleanR = Map.from(rJson as Map<String, dynamic>);
+        cleanR.remove('workouts');
+        await txn.insert('routines', cleanR);
+      }
+
+      // 4. Restaurar Treinos
+      final List<dynamic> workouts = backupData['workouts'] ?? [];
+      for (var wJson in workouts) {
+        final Map<String, dynamic> cleanW = Map.from(wJson as Map<String, dynamic>);
+        final List<dynamic> exercisesList = cleanW.remove('exercises') ?? [];
+        
+        final workoutId = await txn.insert('workouts', cleanW);
+
+        // Restaurar Vínculo Treino-Exercício
+        for (int i = 0; i < exercisesList.length; i++) {
+          final ex = exercisesList[i];
+          await txn.insert('workout_exercises', {
+            'workout_id': workoutId,
+            'exercise_id': ex['id'],
+            'position': i,
+            'notes': ex['workout_specific_notes'] ?? ex['notes'],
+            'group_id': ex['group_id'],
+          });
+        }
+      }
+
+      // 5. Restaurar Sessões e Séries
+      final List<dynamic> sessions = backupData['sessions'] ?? [];
+      for (var sJson in sessions) {
+        final Map<String, dynamic> cleanS = Map.from(sJson as Map<String, dynamic>);
+        final List<dynamic> setsList = cleanS.remove('sets') ?? [];
+        
+        final sessionId = await txn.insert('workout_sessions', cleanS);
+
+        for (var setJson in setsList) {
+          await txn.insert('exercise_sets', {
+            ...setJson as Map<String, dynamic>,
+            'session_id': sessionId,
+          });
+        }
+      }
+    });
+  }
+
   Future close() async {
     final db = await instance.database;
     db.close();

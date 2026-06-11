@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/user_profile.dart';
 import '../providers/profile_provider.dart';
+import '../providers/workout_provider.dart';
 import '../services/backup_service.dart';
 import 'archived_workouts_screen.dart';
 
@@ -95,12 +96,20 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         actions: [
           TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')),
           TextButton(
-            onPressed: () {
+            onPressed: () async {
               Navigator.pop(context);
-              // Lógica de restauração será implementada se necessário um parser completo
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Funcionalidade de restauração em processamento. Selecione o arquivo.')),
-              );
+              final result = await BackupService().importBackup();
+              if (result != null && context.mounted) {
+                // Forçar recarregamento total dos providers após a restauração
+                ref.invalidate(workoutListProvider);
+                ref.invalidate(sessionListProvider);
+                ref.invalidate(exerciseListProvider);
+                ref.invalidate(routineProgressProvider);
+                
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text(result)),
+                );
+              }
             },
             child: const Text('Confirmar e Importar', style: TextStyle(color: Colors.red)),
           ),
