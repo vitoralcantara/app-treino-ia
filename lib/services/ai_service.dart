@@ -12,6 +12,12 @@ class AiService {
       generationConfig: GenerationConfig(
         temperature: 0.2, // Baixa temperatura para respostas mais determinísticas (JSON estruturado)
       ),
+      safetySettings: [
+        SafetySetting(HarmCategory.harassment, HarmBlockThreshold.none),
+        SafetySetting(HarmCategory.hateSpeech, HarmBlockThreshold.none),
+        SafetySetting(HarmCategory.sexuallyExplicit, HarmBlockThreshold.none),
+        SafetySetting(HarmCategory.dangerousContent, HarmBlockThreshold.none),
+      ],
     );
   }
 
