@@ -509,10 +509,13 @@ class _WorkoutExecutionScreenState extends ConsumerState<WorkoutExecutionScreen>
                                 child: Text('${value}s DESCANSO'),
                               );
                             }).toList(),
-                            onChanged: _isTimerRunning ? null : (newValue) {
+                            onChanged: _isTimerRunning ? null : (newValue) async {
                               setState(() {
                                 _selectedRestTime = newValue!;
                               });
+                              // Salvar preferência
+                              final prefs = await SharedPreferences.getInstance();
+                              await prefs.setInt(_restTimeKey, newValue!);
                             },
                           ),
                         ),

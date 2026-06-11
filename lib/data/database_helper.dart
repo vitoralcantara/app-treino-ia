@@ -24,7 +24,7 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 10, // Aumentei a versão para 10
+      version: 11, // Aumentei a versão para 11
       onCreate: _createDB,
       onUpgrade: _upgradeDB,
     );
@@ -78,6 +78,10 @@ class DatabaseHelper {
     if (oldVersion < 10) {
       await db.execute('ALTER TABLE routines ADD COLUMN suggested_duration_weeks INTEGER');
     }
+    if (oldVersion < 11) {
+      await db.execute('ALTER TABLE routines ADD COLUMN frequency_type TEXT');
+      await db.execute('ALTER TABLE routines ADD COLUMN frequency_value TEXT');
+    }
   }
 
   Future _createDB(Database db, int version) async {
@@ -108,7 +112,9 @@ class DatabaseHelper {
         name $textType,
         created_at $textType,
         is_active INTEGER DEFAULT 1,
-        suggested_duration_weeks INTEGER
+        suggested_duration_weeks INTEGER,
+        frequency_type TEXT,
+        frequency_value TEXT
       )
     ''');
 
@@ -178,14 +184,26 @@ class DatabaseHelper {
   }
 
   // --- Routine Operations ---
-  Future<int> createRoutine(String name, {int? durationWeeks}) async {
+  Future<int> createRoutine(String name, {int? durationWeeks, String? frequencyType, String? frequencyValue}) async {
     final db = await instance.database;
     return await db.insert('routines', {
       'name': name,
       'created_at': DateTime.now().toIso8601String(),
       'is_active': 1,
       'suggested_duration_weeks': durationWeeks,
+      'frequency_type': frequencyType,
+      'frequency_value': frequencyValue,
     });
+  }
+
+  Future<void> updateRoutineFrequency(int routineId, String? type, String? value) async {
+    final db = await instance.database;
+    await db.update(
+      'routines', 
+      {'frequency_type': type, 'frequency_value': value}, 
+      where: 'id = ?', 
+      whereArgs: [routineId]
+    );
   }
 
   Future<Routine?> getActiveRoutine() async {
@@ -202,18 +220,17 @@ class DatabaseHelper {
       await txn.update('workouts', {'is_active': 0}, where: 'is_active = 1');
     });
   }
-Future<void> activateRoutine(int routineId) async {
-  final db = await instance.database;
-  await db.transaction((txn) async {
-    // Arquivar o que estiver ativo primeiro
-    await txn.update('routines', {'is_active': 0}, where: 'is_active = 1');
-    await txn.update('workouts', {'is_active': 0}, where: 'is_active = 1');
 
-    // Ativar a nova
-    await txn.update('routines', {'is_active': 1}, where: 'id = ?', whereArgs: [routineId]);
-    await txn.update('workouts', {'is_active': 1}, where: 'routine_id = ?', whereArgs: [routineId]);
-  });
-}
+  Future<void> activateRoutine(int routineId) async {
+    final db = await instance.database;
+    await db.transaction((txn) async {
+      await txn.update('routines', {'is_active': 0}, where: 'is_active = 1');
+      await txn.update('workouts', {'is_active': 0}, where: 'is_active = 1');
+      
+      await txn.update('routines', {'is_active': 1}, where: 'id = ?', whereArgs: [routineId]);
+      await txn.update('workouts', {'is_active': 1}, where: 'routine_id = ?', whereArgs: [routineId]);
+    });
+  }
 
   Future<List<Routine>> getArchivedRoutines() async {
     final db = await instance.database;
@@ -243,14 +260,7 @@ Future<void> activateRoutine(int routineId) async {
         ));
       }
 
-      routines.add(Routine(
-        id: id,
-        name: row['name'] as String,
-        createdAt: DateTime.parse(row['created_at'] as String),
-        isActive: false,
-        suggestedDurationWeeks: row['suggested_duration_weeks'] as int?,
-        workouts: workouts,
-      ));
+      routines.add(Routine.fromJson(row).copyWith(workouts: workouts));
     }
     return routines;
   }
@@ -264,7 +274,12 @@ Future<void> activateRoutine(int routineId) async {
 
   Future<int> createExercise(Exercise exercise) async {
     final db = await instance.database;
-    return await db.insert('exercises', exercise.toJson());
+    
+    final exerciseMap = exercise.toJson();
+    exerciseMap.remove('workout_specific_notes');
+    exerciseMap.remove('group_id');
+    
+    return await db.insert('exercises', exerciseMap);
   }
 
   Future<void> deleteExercise(int id) async {
@@ -274,9 +289,13 @@ Future<void> activateRoutine(int routineId) async {
 
   Future<void> updateExercise(Exercise exercise) async {
     final db = await instance.database;
+    final exerciseMap = exercise.toJson();
+    exerciseMap.remove('workout_specific_notes');
+    exerciseMap.remove('group_id');
+    
     await db.update(
       'exercises',
-      exercise.toJson(),
+      exerciseMap,
       where: 'id = ?',
       whereArgs: [exercise.id],
     );
@@ -317,9 +336,9 @@ Future<void> activateRoutine(int routineId) async {
       int exerciseId = exercise.id ?? 0;
       
       if (exerciseId == 0) {
-         // Não incluir notas específicas de treino na tabela geral de exercícios
          final exerciseMap = exercise.toJson();
          exerciseMap.remove('workout_specific_notes');
+         exerciseMap.remove('group_id');
          exerciseId = await db.insert('exercises', exerciseMap);
       }
 

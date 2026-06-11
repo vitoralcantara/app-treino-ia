@@ -31,6 +31,13 @@ class WorkoutListNotifier extends Notifier<List<Workout>> {
     await _load();
   }
 
+  Future<void> updateRoutineFrequency(int routineId, String? type, String? value) async {
+    final db = ref.read(databaseProvider);
+    await db.updateRoutineFrequency(routineId, type, value);
+    ref.invalidate(routineProgressProvider); // Força atualização da UI que depende do progresso da rotina
+    await _load();
+  }
+
   Future<List<Routine>> getArchivedRoutines() async {
     final db = ref.read(databaseProvider);
     return await db.getArchivedRoutines();

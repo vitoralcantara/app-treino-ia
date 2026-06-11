@@ -280,9 +280,27 @@ class WorkoutTab extends ConsumerWidget {
                                 valueColor: AlwaysStoppedAnimation<Color>(isComplete ? Colors.green : Colors.blue),
                               ),
                               const SizedBox(height: 6),
-                              Text(
-                                'Treino $sessionCount de $totalTarget (Meta: $suggestedWeeks semanas)',
-                                style: const TextStyle(fontSize: 10, color: Colors.blueGrey),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(
+                                    'Treino $sessionCount de $totalTarget (Meta: $suggestedWeeks semanas)',
+                                    style: const TextStyle(fontSize: 10, color: Colors.blueGrey),
+                                  ),
+                                  InkWell(
+                                    onTap: () => _showFrequencyDialog(context, ref, routine),
+                                    child: Row(
+                                      children: [
+                                        Icon(Icons.calendar_month, size: 12, color: Theme.of(context).colorScheme.primary),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          _getFrequencyLabel(routine),
+                                          style: TextStyle(fontSize: 10, color: Theme.of(context).colorScheme.primary, fontWeight: FontWeight.bold),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
                               ),
                             ],
                           ),
@@ -491,6 +509,23 @@ class WorkoutTab extends ConsumerWidget {
     );
   }
 
+  String _getFrequencyLabel(Routine routine) {
+    if (routine.frequencyType == null) return 'Agendar';
+    switch (routine.frequencyType) {
+      case 'daily': return 'Diário';
+      case 'weekdays': return 'Dias Úteis';
+      case 'weekly': return 'Semanal (${routine.frequencyValue ?? ""})';
+      default: return 'Agendar';
+    }
+  }
+
+  void _showFrequencyDialog(BuildContext context, WidgetRef ref, Routine routine) {
+    showDialog(
+      context: context,
+      builder: (context) => _RoutineFrequencyDialog(routine: routine, ref: ref),
+    );
+  }
+
   void _showAddWorkoutDialog(BuildContext context, WidgetRef ref) {
     final controller = TextEditingController();
     showDialog(
@@ -520,6 +555,89 @@ class WorkoutTab extends ConsumerWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _RoutineFrequencyDialog extends StatefulWidget {
+  final Routine routine;
+  final WidgetRef ref;
+
+  const _RoutineFrequencyDialog({required this.routine, required this.ref});
+
+  @override
+  State<_RoutineFrequencyDialog> createState() => _RoutineFrequencyDialogState();
+}
+
+class _RoutineFrequencyDialogState extends State<_RoutineFrequencyDialog> {
+  String? _selectedType;
+  final List<String> _selectedDays = [];
+  final List<String> _weekDays = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'];
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedType = widget.routine.frequencyType;
+    if (_selectedType == 'weekly' && widget.routine.frequencyValue != null) {
+      _selectedDays.addAll(widget.routine.frequencyValue!.split(','));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Frequência do Treino'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          DropdownButtonFormField<String>(
+            decoration: const InputDecoration(border: OutlineInputBorder(), isDense: true),
+            initialValue: _selectedType,
+            hint: const Text('Selecione a frequência'),
+            items: const [
+              DropdownMenuItem(value: 'daily', child: Text('Diariamente')),
+              DropdownMenuItem(value: 'weekdays', child: Text('Dias da Semana (Seg-Sex)')),
+              DropdownMenuItem(value: 'weekly', child: Text('Semanal (Dias específicos)')),
+            ],
+            onChanged: (val) => setState(() => _selectedType = val),
+          ),
+          if (_selectedType == 'weekly') ...[
+            const SizedBox(height: 16),
+            const Text('Selecione os dias:', style: TextStyle(fontWeight: FontWeight.bold)),
+            Wrap(
+              spacing: 4,
+              children: _weekDays.map((day) => FilterChip(
+                label: Text(day, style: const TextStyle(fontSize: 10)),
+                selected: _selectedDays.contains(day),
+                onSelected: (selected) {
+                  setState(() {
+                    if (selected) {
+                      _selectedDays.add(day);
+                    } else {
+                      _selectedDays.remove(day);
+                    }
+                  });
+                },
+              )).toList(),
+            ),
+          ]
+        ],
+      ),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')),
+        ElevatedButton(
+          onPressed: () {
+            String? value;
+            if (_selectedType == 'weekly') {
+              value = _selectedDays.join(',');
+            }
+            widget.ref.read(workoutListProvider.notifier).updateRoutineFrequency(widget.routine.id!, _selectedType, value);
+            Navigator.pop(context);
+          },
+          child: const Text('Salvar'),
+        ),
+      ],
     );
   }
 }
