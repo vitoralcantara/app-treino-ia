@@ -24,7 +24,7 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 11, // Aumentei a versão para 11
+      version: 12, // Aumentei a versão para 12
       onCreate: _createDB,
       onUpgrade: _upgradeDB,
     );
@@ -82,6 +82,18 @@ class DatabaseHelper {
       await db.execute('ALTER TABLE routines ADD COLUMN frequency_type TEXT');
       await db.execute('ALTER TABLE routines ADD COLUMN frequency_value TEXT');
     }
+    if (oldVersion < 12) {
+      // Adicionando colunas que podem estar faltando se o onCreate anterior foi usado
+      try {
+        await db.execute('ALTER TABLE exercises ADD COLUMN suggested_sets INTEGER');
+      } catch (_) {}
+      try {
+        await db.execute('ALTER TABLE exercises ADD COLUMN suggested_reps INTEGER');
+      } catch (_) {}
+      try {
+        await db.execute('ALTER TABLE exercises ADD COLUMN workout_specific_notes TEXT');
+      } catch (_) {}
+    }
   }
 
   Future _createDB(Database db, int version) async {
@@ -102,7 +114,8 @@ class DatabaseHelper {
         video_url TEXT,
         suggested_sets INTEGER,
         suggested_reps INTEGER,
-        technique TEXT
+        technique TEXT,
+        workout_specific_notes TEXT
       )
     ''');
 
@@ -276,7 +289,6 @@ class DatabaseHelper {
     final db = await instance.database;
     
     final exerciseMap = exercise.toJson();
-    exerciseMap.remove('workout_specific_notes');
     exerciseMap.remove('group_id');
     
     return await db.insert('exercises', exerciseMap);
@@ -290,7 +302,6 @@ class DatabaseHelper {
   Future<void> updateExercise(Exercise exercise) async {
     final db = await instance.database;
     final exerciseMap = exercise.toJson();
-    exerciseMap.remove('workout_specific_notes');
     exerciseMap.remove('group_id');
     
     await db.update(
@@ -337,7 +348,6 @@ class DatabaseHelper {
       
       if (exerciseId == 0) {
          final exerciseMap = exercise.toJson();
-         exerciseMap.remove('workout_specific_notes');
          exerciseMap.remove('group_id');
          exerciseId = await db.insert('exercises', exerciseMap);
       }
