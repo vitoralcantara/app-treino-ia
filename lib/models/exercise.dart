@@ -8,9 +8,10 @@ class Exercise {
   final bool isAvailable;
   final int? suggestedSets;
   final int? suggestedReps;
+  final List<int>? suggestedRepsList; // Novo: Lista de reps por série (ex: [12, 10, 10, 8])
   final String? workoutSpecificNotes;
-  final String? groupId; // Novo: Identificador de Bi-set/Tri-set
-  final String? suggestedTechnique; // Novo: Técnica sugerida (drop_set, rest_pause, etc)
+  final String? groupId;
+  final String? suggestedTechnique;
 
   Exercise({
     this.id,
@@ -22,6 +23,7 @@ class Exercise {
     this.isAvailable = true,
     this.suggestedSets,
     this.suggestedReps,
+    this.suggestedRepsList,
     this.workoutSpecificNotes,
     this.groupId,
     this.suggestedTechnique,
@@ -38,6 +40,7 @@ class Exercise {
       isAvailable: (json['isAvailable'] ?? json['is_available'] ?? 1) == 1,
       suggestedSets: _parseSafeInt(json['suggestedSets'] ?? json['suggested_sets']),
       suggestedReps: _parseSafeInt(json['suggestedReps'] ?? json['suggested_reps']),
+      suggestedRepsList: _parseSafeIntList(json['suggested_reps_list'] ?? json['suggestedRepsList'] ?? json['suggested_reps']),
       workoutSpecificNotes: (json['workoutSpecificNotes'] ?? json['workout_specific_notes'] ?? json['notes']) as String?,
       groupId: (json['groupId'] ?? json['group'] ?? json['group_id']) as String?,
       suggestedTechnique: (json['suggestedTechnique'] ?? json['technique'] ?? json['suggested_technique']) as String?,
@@ -48,10 +51,24 @@ class Exercise {
     if (value == null) return null;
     if (value is int) return value;
     if (value is String) {
-      // Tenta extrair o primeiro número encontrado (ex: "12/10/8" -> 12)
       final match = RegExp(r'\d+').firstMatch(value);
       if (match != null) {
         return int.tryParse(match.group(0)!);
+      }
+    }
+    return null;
+  }
+
+  static List<int>? _parseSafeIntList(dynamic value) {
+    if (value == null) return null;
+    if (value is List) {
+      return value.map((e) => int.tryParse(e.toString()) ?? 0).toList();
+    }
+    if (value is String) {
+      // Trata formatos como "12/10/8" ou "12, 10, 8" ou "12-10-8"
+      final matches = RegExp(r'\d+').allMatches(value);
+      if (matches.isNotEmpty) {
+        return matches.map((m) => int.parse(m.group(0)!)).toList();
       }
     }
     return null;
@@ -68,6 +85,7 @@ class Exercise {
       'is_available': isAvailable ? 1 : 0,
       if (suggestedSets != null) 'suggested_sets': suggestedSets,
       if (suggestedReps != null) 'suggested_reps': suggestedReps,
+      if (suggestedRepsList != null) 'suggested_reps_list': suggestedRepsList,
       if (workoutSpecificNotes != null) 'workout_specific_notes': workoutSpecificNotes,
       if (groupId != null) 'group_id': groupId,
       if (suggestedTechnique != null) 'technique': suggestedTechnique,

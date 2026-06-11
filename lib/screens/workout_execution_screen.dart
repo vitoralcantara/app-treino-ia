@@ -132,15 +132,23 @@ class _WorkoutExecutionScreenState extends ConsumerState<WorkoutExecutionScreen>
           // Usar sugestão da IA se disponível, senão padrão
           final suggestedSets = exercise.suggestedSets ?? 3;
           final suggestedReps = exercise.suggestedReps ?? 10;
+          final suggestedList = exercise.suggestedRepsList;
           
           _setsByExercise[exercise.id!] = List.generate(
             suggestedSets, 
-            (_) => ExerciseSet(
-              reps: suggestedReps, 
-              weight: 0, 
-              exerciseId: exercise.id,
-              technique: exercise.suggestedTechnique,
-            ),
+            (i) {
+              int reps = suggestedReps;
+              // Se houver uma lista de reps específica para cada série, usa ela
+              if (suggestedList != null && i < suggestedList.length) {
+                reps = suggestedList[i];
+              }
+              return ExerciseSet(
+                reps: reps, 
+                weight: 0, 
+                exerciseId: exercise.id,
+                technique: exercise.suggestedTechnique,
+              );
+            },
           );
           _completedSets[exercise.id!] = List.generate(suggestedSets, (_) => false);
         }
