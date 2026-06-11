@@ -2,7 +2,6 @@ import 'dart:io';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../models/workout.dart';
 import '../models/workout_session.dart';
@@ -146,26 +145,6 @@ class _WorkoutExecutionScreenState extends ConsumerState<WorkoutExecutionScreen>
           _completedSets[exercise.id!] = List.generate(suggestedSets, (_) => false);
         }
       }
-    });
-  }
-
-  void _addNewExercise(Exercise exercise) {
-    if (_setsByExercise.containsKey(exercise.id)) return;
-
-    setState(() {
-      _dynamicExercises.add(exercise);
-      final suggestedSets = exercise.suggestedSets ?? 3;
-      final suggestedReps = exercise.suggestedReps ?? 10;
-      _setsByExercise[exercise.id!] = List.generate(
-        suggestedSets, 
-        (_) => ExerciseSet(
-          reps: suggestedReps, 
-          weight: 0, 
-          exerciseId: exercise.id,
-          technique: exercise.suggestedTechnique,
-        ),
-      );
-      _completedSets[exercise.id!] = List.generate(suggestedSets, (_) => false);
     });
   }
 
