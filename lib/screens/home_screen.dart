@@ -132,11 +132,41 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Meu Treino'),
-      ),
-      body: IndexedStack(
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        
+        // Se o teclado estiver aberto, apenas fecha ele
+        if (FocusManager.instance.primaryFocus?.hasFocus ?? false) {
+          FocusManager.instance.primaryFocus?.unfocus();
+          return;
+        }
+
+        // Caso contrário, se o sistema permitir, deixa fechar o app
+        // No caso do HomeScreen que é a raiz, podemos opcionalmente confirmar saída
+        // mas o pedido específico foi sobre o teclado.
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('Meu Treino'),
+          leading: Builder(
+            builder: (context) {
+              return IconButton(
+                icon: const Icon(Icons.arrow_back),
+                onPressed: () {
+                  if (FocusManager.instance.primaryFocus?.hasFocus ?? false) {
+                    FocusManager.instance.primaryFocus?.unfocus();
+                  } else {
+                    // Se não tiver teclado, o comportamento padrão do back button
+                    // pode ser minimizar o app ou o que o SO decidir.
+                  }
+                },
+              );
+            },
+          ),
+        ),
+        body: IndexedStack(
         index: _selectedIndex,
         children: const [
           WorkoutTab(),
@@ -169,6 +199,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         unselectedItemColor: Colors.grey,
         onTap: _onItemTapped,
       ),
+    ),
     );
   }
 }
