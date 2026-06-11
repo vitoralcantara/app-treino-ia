@@ -318,9 +318,13 @@ class _WorkoutExecutionScreenState extends ConsumerState<WorkoutExecutionScreen>
     final currentTech = sets[setIndex].technique;
     String? nextTech;
     
-    if (currentTech == null) nextTech = 'drop_set';
-    else if (currentTech == 'drop_set') nextTech = 'rest_pause';
-    else nextTech = null;
+    if (currentTech == null) {
+      nextTech = 'drop_set';
+    } else if (currentTech == 'drop_set') {
+      nextTech = 'rest_pause';
+    } else {
+      nextTech = null;
+    }
 
     setState(() {
       sets[setIndex] = ExerciseSet(
