@@ -54,6 +54,12 @@ class WorkoutListNotifier extends Notifier<List<Workout>> {
     await _load();
   }
 
+  Future<void> updateExerciseNotesInWorkout(int workoutId, int exerciseId, String notes) async {
+    final db = ref.read(databaseProvider);
+    await db.updateExerciseNotesInWorkout(workoutId, exerciseId, notes);
+    await _load();
+  }
+
   Future<void> removeExerciseFromWorkout(int workoutId, int exerciseId) async {
     final db = ref.read(databaseProvider);
     await db.removeExerciseFromWorkout(workoutId, exerciseId);

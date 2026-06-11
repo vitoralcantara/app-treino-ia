@@ -417,6 +417,60 @@ class _WorkoutExecutionScreenState extends ConsumerState<WorkoutExecutionScreen>
     );
   }
 
+  void _showExerciseNotesDialog(Exercise exercise) {
+    final controller = TextEditingController(text: exercise.workoutSpecificNotes);
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Observações: ${exercise.name}'),
+        content: TextField(
+          controller: controller,
+          maxLines: 3,
+          autofocus: true,
+          decoration: const InputDecoration(
+            hintText: 'Ex: Cadência lenta, focar na contração...',
+            border: OutlineInputBorder(),
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')),
+          ElevatedButton(
+            onPressed: () async {
+              await ref.read(workoutListProvider.notifier).updateExerciseNotesInWorkout(
+                widget.workout.id!, 
+                exercise.id!, 
+                controller.text,
+              );
+              if (mounted) {
+                // Atualizar o objeto local para refletir na UI sem precisar recarregar tudo
+                setState(() {
+                  final index = _dynamicExercises.indexOf(exercise);
+                  if (index != -1) {
+                    _dynamicExercises[index] = Exercise(
+                      id: exercise.id,
+                      name: exercise.name,
+                      category: exercise.category,
+                      instructions: exercise.instructions,
+                      imageUrl: exercise.imageUrl,
+                      videoUrl: exercise.videoUrl,
+                      isAvailable: exercise.isAvailable,
+                      suggestedSets: exercise.suggestedSets,
+                      suggestedReps: exercise.suggestedReps,
+                      workoutSpecificNotes: controller.text,
+                    );
+                  }
+                });
+                Navigator.pop(context);
+              }
+            },
+            child: const Text('Salvar'),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -579,6 +633,11 @@ class _WorkoutExecutionScreenState extends ConsumerState<WorkoutExecutionScreen>
                                       onPressed: () => _launchVideo(exercise.videoUrl!),
                                     ),
                                   IconButton(
+                                    icon: const Icon(Icons.edit_note, color: Colors.blueAccent),
+                                    tooltip: 'Observações do treino',
+                                    onPressed: () => _showExerciseNotesDialog(exercise),
+                                  ),
+                                  IconButton(
                                     icon: const Icon(Icons.history, color: Colors.blueAccent),
                                     tooltip: 'Histórico de Cargas',
                                     onPressed: () => _showExerciseHistory(exercise),
@@ -586,6 +645,14 @@ class _WorkoutExecutionScreenState extends ConsumerState<WorkoutExecutionScreen>
 
                                 ],
                               ),
+                              if (exercise.workoutSpecificNotes != null && exercise.workoutSpecificNotes!.isNotEmpty)
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 4.0, bottom: 8.0),
+                                  child: Text(
+                                    'Obs: ${exercise.workoutSpecificNotes}',
+                                    style: TextStyle(fontSize: 12, color: Colors.blue.shade200, fontStyle: FontStyle.italic),
+                                  ),
+                                ),
                               const SizedBox(height: 8),
                               ...sets.asMap().entries.map((entry) {
                                 int setIndex = entry.key;

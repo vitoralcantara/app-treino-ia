@@ -6,8 +6,9 @@ class Exercise {
   final String? imageUrl;
   final String? videoUrl;
   final bool isAvailable;
-  final int? suggestedSets; // Novo: Séries sugeridas pela IA
-  final int? suggestedReps; // Novo: Repetições sugeridas pela IA
+  final int? suggestedSets;
+  final int? suggestedReps;
+  final String? workoutSpecificNotes; // Novo: Observação específica para este exercício NESTE treino
 
   Exercise({
     this.id,
@@ -19,6 +20,7 @@ class Exercise {
     this.isAvailable = true,
     this.suggestedSets,
     this.suggestedReps,
+    this.workoutSpecificNotes,
   });
 
   factory Exercise.fromJson(Map<String, dynamic> json) {
@@ -32,6 +34,7 @@ class Exercise {
       isAvailable: (json['isAvailable'] ?? json['is_available'] ?? 1) == 1,
       suggestedSets: (json['suggestedSets'] ?? json['suggested_sets']) as int?,
       suggestedReps: (json['suggestedReps'] ?? json['suggested_reps']) as int?,
+      workoutSpecificNotes: (json['workoutSpecificNotes'] ?? json['workout_specific_notes'] ?? json['notes']) as String?,
     );
   }
 
@@ -46,6 +49,7 @@ class Exercise {
       'is_available': isAvailable ? 1 : 0,
       if (suggestedSets != null) 'suggested_sets': suggestedSets,
       if (suggestedReps != null) 'suggested_reps': suggestedReps,
+      if (workoutSpecificNotes != null) 'workout_specific_notes': workoutSpecificNotes,
     };
   }
 }

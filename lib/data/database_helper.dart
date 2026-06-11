@@ -24,7 +24,7 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 7, // Aumentei a versão para 7
+      version: 8, // Aumentei a versão para 8
       onCreate: _createDB,
       onUpgrade: _upgradeDB,
     );
@@ -58,7 +58,6 @@ class DatabaseHelper {
       ''');
       await db.execute('ALTER TABLE workouts ADD COLUMN routine_id INTEGER');
       
-      // Criar uma rotina padrão para os treinos existentes
       final now = DateTime.now().toIso8601String();
       final routineId = await db.insert('routines', {
         'name': 'Minha Rotina',
@@ -67,6 +66,9 @@ class DatabaseHelper {
       });
       
       await db.update('workouts', {'routine_id': routineId}, where: 'is_active = 1');
+    }
+    if (oldVersion < 8) {
+      await db.execute('ALTER TABLE workout_exercises ADD COLUMN notes TEXT');
     }
   }
 
@@ -116,6 +118,7 @@ class DatabaseHelper {
         workout_id $intType,
         exercise_id $intType,
         position $intType,
+        notes TEXT,
         FOREIGN KEY (workout_id) REFERENCES workouts (id) ON DELETE CASCADE,
         FOREIGN KEY (exercise_id) REFERENCES exercises (id) ON DELETE CASCADE
       )
@@ -183,11 +186,9 @@ class DatabaseHelper {
   Future<void> activateRoutine(int routineId) async {
     final db = await instance.database;
     await db.transaction((txn) async {
-      // Arquivar o que estiver ativo primeiro
       await txn.update('routines', {'is_active': 0}, where: 'is_active = 1');
       await txn.update('workouts', {'is_active': 0}, where: 'is_active = 1');
       
-      // Ativar a nova
       await txn.update('routines', {'is_active': 1}, where: 'id = ?', whereArgs: [routineId]);
       await txn.update('workouts', {'is_active': 1}, where: 'routine_id = ?', whereArgs: [routineId]);
     });
@@ -206,7 +207,7 @@ class DatabaseHelper {
       for (var wRow in workoutsRows) {
         final wId = wRow['id'] as int;
         final exercisesRows = await db.rawQuery('''
-          SELECT e.* FROM exercises e
+          SELECT e.*, we.notes FROM exercises e
           JOIN workout_exercises we ON e.id = we.exercise_id
           WHERE we.workout_id = ?
           ORDER BY we.position
@@ -273,7 +274,6 @@ class DatabaseHelper {
   Future<int> createWorkout(Workout workout) async {
     final db = await instance.database;
     
-    // Garantir que temos uma rotina ativa se não houver
     int? routineId = workout.routineId;
     if (routineId == null) {
       final activeRoutines = await db.query('routines', where: 'is_active = 1', limit: 1);
@@ -302,6 +302,7 @@ class DatabaseHelper {
         'workout_id': id,
         'exercise_id': exerciseId,
         'position': i,
+        'notes': exercise.workoutSpecificNotes,
       });
     }
     return id;
@@ -312,7 +313,17 @@ class DatabaseHelper {
     await db.update('workouts', {'is_active': isActive ? 1 : 0}, where: 'id = ?', whereArgs: [id]);
   }
 
-  Future<void> addExerciseToWorkout(int workoutId, int exerciseId) async {
+  Future<void> updateExerciseNotesInWorkout(int workoutId, int exerciseId, String notes) async {
+    final db = await instance.database;
+    await db.update(
+      'workout_exercises',
+      {'notes': notes},
+      where: 'workout_id = ? AND exercise_id = ?',
+      whereArgs: [workoutId, exerciseId],
+    );
+  }
+
+  Future<void> addExerciseToWorkout(int workoutId, int exerciseId, {String? notes}) async {
     final db = await instance.database;
     final result = await db.rawQuery(
       'SELECT MAX(position) as max_pos FROM workout_exercises WHERE workout_id = ?',
@@ -324,6 +335,7 @@ class DatabaseHelper {
       'workout_id': workoutId,
       'exercise_id': exerciseId,
       'position': nextPos,
+      'notes': notes,
     });
   }
 
@@ -350,7 +362,7 @@ class DatabaseHelper {
     for (var row in result) {
       final id = row['id'] as int;
       final exercisesRows = await db.rawQuery('''
-        SELECT e.* FROM exercises e
+        SELECT e.*, we.notes FROM exercises e
         JOIN workout_exercises we ON e.id = we.exercise_id
         WHERE we.workout_id = ?
         ORDER BY we.position
