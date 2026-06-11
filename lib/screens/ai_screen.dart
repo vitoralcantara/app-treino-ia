@@ -41,6 +41,47 @@ class _AiScreenState extends ConsumerState<AiScreen> {
     );
   }
 
+  void _copyJsonInstructions() {
+    const instructions = '''
+Atue como um especialista em musculação. Formate a rotina de treinos solicitada estritamente no formato JSON abaixo para que eu possa importar no meu aplicativo.
+
+Regras de Formatação:
+1. Responda EXCLUSIVAMENTE com o código JSON puro.
+2. "routine_name": Nome do ciclo (ex: Hipertrofia Fase 1).
+3. "suggested_duration_weeks": Quantas semanas o treino deve durar (ex: 4).
+4. "workouts": Lista de treinos (ex: Treino A, B, C).
+5. "group": (Opcional) Use o mesmo ID para exercícios em Bi-set/Super série.
+6. "technique": (Opcional) Use "drop_set" ou "rest_pause".
+
+Formato Exato:
+{
+  "routine_name": "Nome",
+  "suggested_duration_weeks": 4,
+  "workouts": [
+    {
+      "name": "Treino A",
+      "exercises": [
+        {
+          "name": "Exercício",
+          "category": "Grupo Muscular",
+          "suggested_sets": 3,
+          "suggested_reps": 12,
+          "notes": "Observações/Instruções",
+          "video_url": "link se houver",
+          "group": "opcional_id",
+          "technique": "opcional"
+        }
+      ]
+    }
+  ]
+}
+''';
+    Clipboard.setData(const ClipboardData(text: instructions));
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Instruções JSON copiadas para o clipboard!')),
+    );
+  }
+
   void _importWorkout() async {
     if (_responseController.text.isEmpty) return;
 
@@ -158,6 +199,12 @@ class _AiScreenState extends ConsumerState<AiScreen> {
                 onPressed: _generatePrompt,
                 icon: const Icon(Icons.copy),
                 label: const Text('Gerar e Copiar Prompt'),
+              ),
+              const SizedBox(height: 10),
+              OutlinedButton.icon(
+                onPressed: _copyJsonInstructions,
+                icon: const Icon(Icons.code),
+                label: const Text('Copiar Apenas Regras JSON'),
               ),
               if (_generatedPrompt.isNotEmpty) ...[
                 const SizedBox(height: 10),
