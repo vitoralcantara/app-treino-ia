@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/user_profile.dart';
 import '../providers/profile_provider.dart';
@@ -281,6 +282,22 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               ),
             ),
 
+            const SizedBox(height: 20),
+            const Text(
+              'Sobre e Apoio',
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 10),
+            Card(
+              child: ListTile(
+                leading: const Icon(Icons.info_outline, color: Colors.purple),
+                title: const Text('Sobre o App e Doações'),
+                subtitle: const Text('Conheça o projeto e apoie o desenvolvimento'),
+                trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                onTap: () => _showAboutDialog(context),
+              ),
+            ),
+
             const SizedBox(height: 30),
             ElevatedButton.icon(
               icon: const Icon(Icons.save),
@@ -290,6 +307,103 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  void _showAboutDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Sobre o Treino IA', textAlign: TextAlign.center),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 80,
+                height: 80,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  image: const DecorationImage(
+                    image: AssetImage('logo-ia.png'),
+                    fit: BoxFit.cover,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.purple.withValues(alpha: 0.3),
+                      blurRadius: 10,
+                      spreadRadius: 2,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'Versão 1.0.0',
+                style: TextStyle(color: Colors.grey, fontSize: 12),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'O Treino IA é um projeto independente de código aberto. Seu objetivo é democratizar o acesso a treinos estruturados usando o poder da Inteligência Artificial.',
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 24),
+              const Divider(),
+              const SizedBox(height: 16),
+              const Text(
+                'Apoie o Projeto! ☕',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Este app é gratuito e sem anúncios. Se ele te ajudou a evoluir nos treinos, considere fazer uma doação de qualquer valor para ajudar a manter o projeto vivo e receber novas atualizações.',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 12),
+              ),
+              const SizedBox(height: 20),
+              const Icon(Icons.qr_code_2, size: 64, color: Colors.white70),
+              const SizedBox(height: 8),
+              const Text(
+                'PIX Copia e Cola',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8),
+              OutlinedButton.icon(
+                onPressed: () {
+                  // TODO: SUBSTITUA A CHAVE ABAIXO PELO SEU CÓDIGO PIX COPIA E COLA REAL
+                  const myPixKey = '0002012636br.gov.bcb.pix0114+55119999999995204000053039865802BR5905BRL60040.006209SAO PAULO6304123463041A2B'; 
+                  
+                  Clipboard.setData(const ClipboardData(text: myPixKey));
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Chave PIX copiada! Obrigado pelo apoio ❤️'),
+                      backgroundColor: Colors.green,
+                    ),
+                  );
+                },
+                icon: const Icon(Icons.copy),
+                label: const Text('Copiar Chave PIX'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: Colors.greenAccent,
+                  side: const BorderSide(color: Colors.greenAccent),
+                ),
+              ),
+              const SizedBox(height: 10),
+              const Text(
+                '*Substitua a chave no código pelo seu PIX real.',
+                style: TextStyle(fontSize: 10, color: Colors.grey, fontStyle: FontStyle.italic),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Fechar'),
+          ),
+        ],
       ),
     );
   }
