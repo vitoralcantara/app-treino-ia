@@ -1,6 +1,9 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:share_plus/share_plus.dart';
 import '../services/ai_prompt_helper.dart';
 import '../providers/workout_provider.dart';
 import '../providers/profile_provider.dart';
@@ -20,29 +23,7 @@ class _AiScreenState extends ConsumerState<AiScreen> {
   final _responseController = TextEditingController();
   String _generatedPrompt = '';
 
-  void _generatePrompt() {
-    if (_requestController.text.isEmpty) return;
-    
-    final profile = ref.read(profileProvider);
-    final exercisesAsync = ref.read(exerciseListProvider);
-    
-    final List<Exercise> availableExercises = exercisesAsync.maybeWhen(
-      data: (list) => list.where((e) => e.isAvailable).toList(),
-      orElse: () => [],
-    );
-
-    setState(() {
-      _generatedPrompt = AiPromptHelper.generateCreateWorkoutPrompt(_requestController.text, profile, availableExercises);
-    });
-
-    Clipboard.setData(ClipboardData(text: _generatedPrompt));
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Prompt copiado! Cole no chat do Gemini.')),
-    );
-  }
-
-  void _copyJsonInstructions() {
-    const instructions = '''
+  static const String _jsonInstructionsText = '''
 Atue como um especialista em musculação. Formate a rotina de treinos solicitada estritamente no formato JSON abaixo para que eu possa importar no meu aplicativo.
 
 Regras de Formatação:
@@ -77,10 +58,58 @@ Formato Exato:
   ]
 }
 ''';
-    Clipboard.setData(const ClipboardData(text: instructions));
+
+  void _generatePrompt() {
+    if (_requestController.text.isEmpty) return;
+    
+    final profile = ref.read(profileProvider);
+    final exercisesAsync = ref.read(exerciseListProvider);
+    
+    final List<Exercise> availableExercises = exercisesAsync.maybeWhen(
+      data: (list) => list.where((e) => e.isAvailable).toList(),
+      orElse: () => [],
+    );
+
+    setState(() {
+      _generatedPrompt = AiPromptHelper.generateCreateWorkoutPrompt(_requestController.text, profile, availableExercises);
+    });
+
+    Clipboard.setData(ClipboardData(text: _generatedPrompt));
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Prompt copiado! Cole no chat do Gemini.')),
+    );
+  }
+
+  void _copyJsonInstructions() {
+    Clipboard.setData(const ClipboardData(text: _jsonInstructionsText));
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Instruções JSON copiadas para o clipboard!')),
     );
+  }
+
+  Future<void> _downloadJsonInstructions() async {
+    try {
+      final directory = await getTemporaryDirectory();
+      final file = File('${directory.path}/regras_formatacao_treino.txt');
+      await file.writeAsString(_jsonInstructionsText);
+
+      await SharePlus.instance.share(
+        ShareParams(
+          files: [XFile(file.path)],
+          text: 'Regras de Formatação para Treino IA',
+        ),
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Erro ao gerar arquivo: $e')),
+        );
+      }
+    }
+  }
+
+  String _formatDate(DateTime date) {
+    return '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
   }
 
   void _importWorkout() async {
@@ -129,10 +158,6 @@ Formato Exato:
         SnackBar(content: Text('Erro ao importar: $e')),
       );
     }
-  }
-
-  String _formatDate(DateTime date) {
-    return '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
   }
 
   @override
@@ -206,6 +231,12 @@ Formato Exato:
                 onPressed: _copyJsonInstructions,
                 icon: const Icon(Icons.code),
                 label: const Text('Copiar Apenas Regras JSON'),
+              ),
+              const SizedBox(height: 10),
+              OutlinedButton.icon(
+                onPressed: _downloadJsonInstructions,
+                icon: const Icon(Icons.file_download_outlined),
+                label: const Text('Baixar Regras em Arquivo'),
               ),
               if (_generatedPrompt.isNotEmpty) ...[
                 const SizedBox(height: 10),
