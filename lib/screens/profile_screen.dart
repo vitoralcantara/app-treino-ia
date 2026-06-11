@@ -385,7 +385,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               const SizedBox(height: 8),
               OutlinedButton.icon(
                 onPressed: () {
-                  // TODO: SUBSTITUA A CHAVE ABAIXO PELO SEU CÓDIGO PIX COPIA E COLA REAL
                   const myPixKey = '0002012636br.gov.bcb.pix0114+55119999999995204000053039865802BR5905BRL60040.006209SAO PAULO6304123463041A2B'; 
                   
                   Clipboard.setData(const ClipboardData(text: myPixKey));
