@@ -105,6 +105,12 @@ class ExerciseListNotifier extends Notifier<AsyncValue<List<Exercise>>> {
     await _load();
   }
 
+  Future<void> updateExercise(Exercise exercise) async {
+    final db = ref.read(databaseProvider);
+    await db.updateExercise(exercise);
+    await _load();
+  }
+
   Future<void> toggleExerciseAvailability(int id, bool isAvailable) async {
     final db = ref.read(databaseProvider);
     await db.toggleExerciseAvailability(id, isAvailable);

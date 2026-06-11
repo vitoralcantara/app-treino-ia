@@ -1,6 +1,8 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../models/exercise.dart';
 import '../providers/workout_provider.dart';
@@ -77,6 +79,11 @@ class ExerciseLibraryScreen extends ConsumerWidget {
                           tooltip: 'Ver vídeo',
                         ),
                       IconButton(
+                        icon: const Icon(Icons.edit, color: Colors.blueGrey),
+                        onPressed: () => _showEditExerciseDialog(context, ref, ex),
+                        tooltip: 'Editar',
+                      ),
+                      IconButton(
                         icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
                         onPressed: () => _confirmDelete(context, ref, ex),
                         tooltip: 'Excluir',
@@ -130,19 +137,21 @@ class ExerciseLibraryScreen extends ConsumerWidget {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Novo Exercício'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(controller: nameController, decoration: const InputDecoration(labelText: 'Nome')),
-            TextField(controller: categoryController, decoration: const InputDecoration(labelText: 'Categoria (ex: Peito)')),
-            TextField(
-              controller: videoController, 
-              decoration: const InputDecoration(
-                labelText: 'URL do Vídeo (ex: YouTube)',
-                hintText: 'https://...',
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(controller: nameController, decoration: const InputDecoration(labelText: 'Nome')),
+              TextField(controller: categoryController, decoration: const InputDecoration(labelText: 'Categoria (ex: Peito)')),
+              TextField(
+                controller: videoController, 
+                decoration: const InputDecoration(
+                  labelText: 'URL do Vídeo (ex: YouTube)',
+                  hintText: 'https://...',
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
         actions: [
           TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')),
@@ -163,6 +172,80 @@ class ExerciseLibraryScreen extends ConsumerWidget {
             child: const Text('Adicionar'),
           ),
         ],
+      ),
+    );
+  }
+
+  void _showEditExerciseDialog(BuildContext context, WidgetRef ref, Exercise ex) {
+    final nameController = TextEditingController(text: ex.name);
+    final categoryController = TextEditingController(text: ex.category);
+    final videoController = TextEditingController(text: ex.videoUrl);
+    String? pickedImagePath = ex.imageUrl;
+
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Editar Exercício'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (pickedImagePath != null && pickedImagePath!.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 12.0),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: pickedImagePath!.startsWith('http')
+                          ? Image.network(pickedImagePath!, height: 100, width: 100, fit: BoxFit.cover)
+                          : Image.file(File(pickedImagePath!), height: 100, width: 100, fit: BoxFit.cover),
+                    ),
+                  ),
+                ElevatedButton.icon(
+                  onPressed: () async {
+                    final picker = ImagePicker();
+                    final image = await picker.pickImage(source: ImageSource.gallery);
+                    if (image != null) {
+                      setDialogState(() {
+                        pickedImagePath = image.path;
+                      });
+                    }
+                  },
+                  icon: const Icon(Icons.image),
+                  label: const Text('Mudar Imagem'),
+                ),
+                TextField(controller: nameController, decoration: const InputDecoration(labelText: 'Nome')),
+                TextField(controller: categoryController, decoration: const InputDecoration(labelText: 'Categoria')),
+                TextField(controller: videoController, decoration: const InputDecoration(labelText: 'URL do Vídeo')),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')),
+            ElevatedButton(
+              onPressed: () {
+                final updatedEx = Exercise(
+                  id: ex.id,
+                  name: nameController.text,
+                  category: categoryController.text,
+                  videoUrl: videoController.text,
+                  imageUrl: pickedImagePath,
+                  instructions: ex.instructions,
+                  isAvailable: ex.isAvailable,
+                  suggestedSets: ex.suggestedSets,
+                  suggestedReps: ex.suggestedReps,
+                  suggestedRepsList: ex.suggestedRepsList,
+                  workoutSpecificNotes: ex.workoutSpecificNotes,
+                  groupId: ex.groupId,
+                  suggestedTechnique: ex.suggestedTechnique,
+                );
+                ref.read(exerciseListProvider.notifier).updateExercise(updatedEx);
+                Navigator.pop(context);
+              },
+              child: const Text('Salvar'),
+            ),
+          ],
+        ),
       ),
     );
   }
