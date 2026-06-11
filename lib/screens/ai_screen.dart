@@ -5,6 +5,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:showcaseview/showcaseview.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../services/ai_prompt_helper.dart';
 import '../providers/workout_provider.dart';
 import '../providers/profile_provider.dart';
@@ -12,17 +14,51 @@ import '../models/exercise.dart';
 import '../models/workout.dart';
 import 'exercise_library_screen.dart';
 
-class AiScreen extends ConsumerStatefulWidget {
+class AiScreen extends StatelessWidget {
   const AiScreen({super.key});
 
   @override
-  ConsumerState<AiScreen> createState() => _AiScreenState();
+  Widget build(BuildContext context) {
+    // ignore: deprecated_member_use
+    return ShowCaseWidget(
+      builder: (context) => const AiScreenContent(),
+    );
+  }
 }
 
-class _AiScreenState extends ConsumerState<AiScreen> {
+class AiScreenContent extends ConsumerStatefulWidget {
+  const AiScreenContent({super.key});
+
+  @override
+  ConsumerState<AiScreenContent> createState() => _AiScreenContentState();
+}
+
+class _AiScreenContentState extends ConsumerState<AiScreenContent> {
   final _requestController = TextEditingController();
   final _responseController = TextEditingController();
   String _generatedPrompt = '';
+
+  // Keys para o tutorial
+  final GlobalKey _step1Key = GlobalKey();
+  final GlobalKey _step2Key = GlobalKey();
+  final GlobalKey _step3Key = GlobalKey();
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _checkTutorial());
+  }
+
+  Future<void> _checkTutorial() async {
+    final prefs = await SharedPreferences.getInstance();
+    final shown = prefs.getBool('tutorial_ai_shown') ?? false;
+    
+    if (!shown && mounted) {
+      // ignore: deprecated_member_use
+      ShowCaseWidget.of(context).startShowCase([_step1Key, _step2Key, _step3Key]);
+      await prefs.setBool('tutorial_ai_shown', true);
+    }
+  }
 
   static const String _jsonInstructionsText = '''
 Atue como um especialista em musculação. Formate a rotina de treinos solicitada estritamente no formato JSON abaixo para que eu possa importar no meu aplicativo.
@@ -247,10 +283,14 @@ Formato Exato:
                 maxLines: 2,
               ),
               const SizedBox(height: 10),
-              ElevatedButton.icon(
-                onPressed: _generatePrompt,
-                icon: const Icon(Icons.copy),
-                label: const Text('Gerar e Copiar Prompt'),
+              Showcase(
+                key: _step1Key,
+                description: 'Passo 1: Gere um prompt otimizado com suas preferências para colar no Gemini ou ChatGPT.',
+                child: ElevatedButton.icon(
+                  onPressed: _generatePrompt,
+                  icon: const Icon(Icons.copy),
+                  label: const Text('Gerar e Copiar Prompt'),
+                ),
               ),
               const SizedBox(height: 10),
               OutlinedButton.icon(
@@ -283,40 +323,48 @@ Formato Exato:
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 10),
-              TextField(
-                controller: _responseController,
-                decoration: const InputDecoration(
-                  labelText: 'Cole a resposta da IA aqui',
-                  hintText: 'Cole o JSON gerado pelo Gemini...',
-                  border: OutlineInputBorder(),
+              Showcase(
+                key: _step2Key,
+                description: 'Passo 2: Após a IA responder, cole o código JSON completo exatamente aqui.',
+                child: TextField(
+                  controller: _responseController,
+                  decoration: const InputDecoration(
+                    labelText: 'Cole a resposta da IA aqui',
+                    hintText: 'Cole o JSON gerado pelo Gemini...',
+                    border: OutlineInputBorder(),
+                  ),
+                  maxLines: 5,
                 ),
-                maxLines: 5,
               ),
               const SizedBox(height: 10),
-              Row(
-                children: [
-                  Expanded(
-                    child: ElevatedButton.icon(
-                      onPressed: _importWorkout,
-                      icon: const Icon(Icons.download),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+              Showcase(
+                key: _step3Key,
+                description: 'Passo 3: Por fim, clique em Importar Texto para transformar o JSON em um ciclo de treinos no seu app!',
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: _importWorkout,
+                        icon: const Icon(Icons.download),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+                        ),
+                        label: const Text('Importar Texto'),
                       ),
-                      label: const Text('Importar Texto'),
                     ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: ElevatedButton.icon(
-                      onPressed: _importFromFile,
-                      icon: const Icon(Icons.upload_file),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Theme.of(context).colorScheme.secondaryContainer,
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: _importFromFile,
+                        icon: const Icon(Icons.upload_file),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Theme.of(context).colorScheme.secondaryContainer,
+                        ),
+                        label: const Text('Subir Arquivo'),
                       ),
-                      label: const Text('Subir Arquivo'),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ],
           ),
