@@ -50,8 +50,9 @@ Regras de Formatação:
 2. "routine_name": Nome do ciclo (ex: Hipertrofia Fase 1).
 3. "suggested_duration_weeks": Quantas semanas o treino deve durar (ex: 4).
 4. "workouts": Lista de treinos (ex: Treino A, B, C).
-5. "group": (Opcional) Use o mesmo ID para exercícios em Bi-set/Super série.
-6. "technique": (Opcional) Use "drop_set" ou "rest_pause".
+5. "suggested_sets" e "suggested_reps": Use APENAS números inteiros (ex: 12). NUNCA use texto como "12/10/8".
+6. "group": (Opcional) Use o mesmo ID para exercícios em Bi-set/Super série.
+7. "technique": (Opcional) Use "drop_set" ou "rest_pause".
 
 Formato Exato:
 {

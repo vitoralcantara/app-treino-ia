@@ -36,12 +36,25 @@ class Exercise {
       imageUrl: (json['imageUrl'] ?? json['image_url']) as String?,
       videoUrl: (json['videoUrl'] ?? json['video_url']) as String?,
       isAvailable: (json['isAvailable'] ?? json['is_available'] ?? 1) == 1,
-      suggestedSets: (json['suggestedSets'] ?? json['suggested_sets']) as int?,
-      suggestedReps: (json['suggestedReps'] ?? json['suggested_reps']) as int?,
+      suggestedSets: _parseSafeInt(json['suggestedSets'] ?? json['suggested_sets']),
+      suggestedReps: _parseSafeInt(json['suggestedReps'] ?? json['suggested_reps']),
       workoutSpecificNotes: (json['workoutSpecificNotes'] ?? json['workout_specific_notes'] ?? json['notes']) as String?,
       groupId: (json['groupId'] ?? json['group'] ?? json['group_id']) as String?,
       suggestedTechnique: (json['suggestedTechnique'] ?? json['technique'] ?? json['suggested_technique']) as String?,
     );
+  }
+
+  static int? _parseSafeInt(dynamic value) {
+    if (value == null) return null;
+    if (value is int) return value;
+    if (value is String) {
+      // Tenta extrair o primeiro número encontrado (ex: "12/10/8" -> 12)
+      final match = RegExp(r'\d+').firstMatch(value);
+      if (match != null) {
+        return int.tryParse(match.group(0)!);
+      }
+    }
+    return null;
   }
 
   Map<String, dynamic> toJson() {
