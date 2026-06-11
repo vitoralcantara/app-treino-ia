@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:file_picker/file_picker.dart';
 import '../services/ai_prompt_helper.dart';
 import '../providers/workout_provider.dart';
 import '../providers/profile_provider.dart';
@@ -113,10 +114,35 @@ Formato Exato:
   }
 
   void _importWorkout() async {
-    if (_responseController.text.isEmpty) return;
+    await _processJsonImport(_responseController.text);
+  }
+
+  Future<void> _importFromFile() async {
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['json', 'txt'],
+      );
+
+      if (result == null || result.files.single.path == null) return;
+
+      final file = File(result.files.single.path!);
+      final content = await file.readAsString();
+      await _processJsonImport(content);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Erro ao ler arquivo: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _processJsonImport(String jsonText) async {
+    if (jsonText.isEmpty) return;
 
     try {
-      final Map<String, dynamic> data = AiPromptHelper.parseAiResponse(_responseController.text);
+      final Map<String, dynamic> data = AiPromptHelper.parseAiResponse(jsonText);
       
       final routineName = data['routine_name'] ?? 'Rotina IA - ${_formatDate(DateTime.now())}';
       final durationWeeks = data['suggested_duration_weeks'] as int?;
@@ -267,13 +293,30 @@ Formato Exato:
                 maxLines: 5,
               ),
               const SizedBox(height: 10),
-              ElevatedButton.icon(
-                onPressed: _importWorkout,
-                icon: const Icon(Icons.download),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-                ),
-                label: const Text('Importar Treino'),
+              Row(
+                children: [
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: _importWorkout,
+                      icon: const Icon(Icons.download),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+                      ),
+                      label: const Text('Importar Texto'),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: _importFromFile,
+                      icon: const Icon(Icons.upload_file),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Theme.of(context).colorScheme.secondaryContainer,
+                      ),
+                      label: const Text('Subir Arquivo'),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
