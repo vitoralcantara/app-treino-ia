@@ -24,7 +24,7 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 8, // Aumentei a versão para 8
+      version: 9, // Aumentei a versão para 9
       onCreate: _createDB,
       onUpgrade: _upgradeDB,
     );
@@ -70,6 +70,11 @@ class DatabaseHelper {
     if (oldVersion < 8) {
       await db.execute('ALTER TABLE workout_exercises ADD COLUMN notes TEXT');
     }
+    if (oldVersion < 9) {
+      await db.execute('ALTER TABLE workout_exercises ADD COLUMN group_id TEXT');
+      await db.execute('ALTER TABLE exercises ADD COLUMN technique TEXT');
+      await db.execute('ALTER TABLE exercise_sets ADD COLUMN technique TEXT');
+    }
   }
 
   Future _createDB(Database db, int version) async {
@@ -89,7 +94,8 @@ class DatabaseHelper {
         is_available INTEGER DEFAULT 1,
         video_url TEXT,
         suggested_sets INTEGER,
-        suggested_reps INTEGER
+        suggested_reps INTEGER,
+        technique TEXT
       )
     ''');
 
@@ -119,6 +125,7 @@ class DatabaseHelper {
         exercise_id $intType,
         position $intType,
         notes TEXT,
+        group_id TEXT,
         FOREIGN KEY (workout_id) REFERENCES workouts (id) ON DELETE CASCADE,
         FOREIGN KEY (exercise_id) REFERENCES exercises (id) ON DELETE CASCADE
       )
@@ -142,6 +149,7 @@ class DatabaseHelper {
         reps $intType,
         weight $doubleType,
         timestamp $textType,
+        technique TEXT,
         FOREIGN KEY (session_id) REFERENCES workout_sessions (id) ON DELETE CASCADE,
         FOREIGN KEY (exercise_id) REFERENCES exercises (id) ON DELETE CASCADE
       )
@@ -186,9 +194,11 @@ class DatabaseHelper {
   Future<void> activateRoutine(int routineId) async {
     final db = await instance.database;
     await db.transaction((txn) async {
+      // Arquivar o que estiver ativo primeiro
       await txn.update('routines', {'is_active': 0}, where: 'is_active = 1');
       await txn.update('workouts', {'is_active': 0}, where: 'is_active = 1');
       
+      // Ativar a nova
       await txn.update('routines', {'is_active': 1}, where: 'id = ?', whereArgs: [routineId]);
       await txn.update('workouts', {'is_active': 1}, where: 'routine_id = ?', whereArgs: [routineId]);
     });
@@ -207,7 +217,7 @@ class DatabaseHelper {
       for (var wRow in workoutsRows) {
         final wId = wRow['id'] as int;
         final exercisesRows = await db.rawQuery('''
-          SELECT e.*, we.notes FROM exercises e
+          SELECT e.*, we.notes, we.group_id FROM exercises e
           JOIN workout_exercises we ON e.id = we.exercise_id
           WHERE we.workout_id = ?
           ORDER BY we.position
@@ -303,6 +313,7 @@ class DatabaseHelper {
         'exercise_id': exerciseId,
         'position': i,
         'notes': exercise.workoutSpecificNotes,
+        'group_id': exercise.groupId,
       });
     }
     return id;
@@ -323,7 +334,7 @@ class DatabaseHelper {
     );
   }
 
-  Future<void> addExerciseToWorkout(int workoutId, int exerciseId, {String? notes}) async {
+  Future<void> addExerciseToWorkout(int workoutId, int exerciseId, {String? notes, String? groupId}) async {
     final db = await instance.database;
     final result = await db.rawQuery(
       'SELECT MAX(position) as max_pos FROM workout_exercises WHERE workout_id = ?',
@@ -336,6 +347,7 @@ class DatabaseHelper {
       'exercise_id': exerciseId,
       'position': nextPos,
       'notes': notes,
+      'group_id': groupId,
     });
   }
 
@@ -362,7 +374,7 @@ class DatabaseHelper {
     for (var row in result) {
       final id = row['id'] as int;
       final exercisesRows = await db.rawQuery('''
-        SELECT e.*, we.notes FROM exercises e
+        SELECT e.*, we.notes, we.group_id FROM exercises e
         JOIN workout_exercises we ON e.id = we.exercise_id
         WHERE we.workout_id = ?
         ORDER BY we.position
@@ -395,6 +407,7 @@ class DatabaseHelper {
         'reps': set.reps,
         'weight': set.weight,
         'timestamp': DateTime.now().toIso8601String(),
+        'technique': set.technique,
       });
     }
     return id;
@@ -423,7 +436,7 @@ class DatabaseHelper {
   Future<List<Map<String, dynamic>>> getExerciseHistory(int exerciseId) async {
     final db = await instance.database;
     final result = await db.rawQuery('''
-      SELECT ws.date, es.reps, es.weight 
+      SELECT ws.date, es.reps, es.weight, es.technique
       FROM exercise_sets es
       JOIN workout_sessions ws ON es.session_id = ws.id
       WHERE es.exercise_id = ?

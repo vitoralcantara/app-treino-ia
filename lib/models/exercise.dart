@@ -8,7 +8,9 @@ class Exercise {
   final bool isAvailable;
   final int? suggestedSets;
   final int? suggestedReps;
-  final String? workoutSpecificNotes; // Novo: Observação específica para este exercício NESTE treino
+  final String? workoutSpecificNotes;
+  final String? groupId; // Novo: Identificador de Bi-set/Tri-set
+  final String? suggestedTechnique; // Novo: Técnica sugerida (drop_set, rest_pause, etc)
 
   Exercise({
     this.id,
@@ -21,6 +23,8 @@ class Exercise {
     this.suggestedSets,
     this.suggestedReps,
     this.workoutSpecificNotes,
+    this.groupId,
+    this.suggestedTechnique,
   });
 
   factory Exercise.fromJson(Map<String, dynamic> json) {
@@ -35,6 +39,8 @@ class Exercise {
       suggestedSets: (json['suggestedSets'] ?? json['suggested_sets']) as int?,
       suggestedReps: (json['suggestedReps'] ?? json['suggested_reps']) as int?,
       workoutSpecificNotes: (json['workoutSpecificNotes'] ?? json['workout_specific_notes'] ?? json['notes']) as String?,
+      groupId: (json['groupId'] ?? json['group'] ?? json['group_id']) as String?,
+      suggestedTechnique: (json['suggestedTechnique'] ?? json['technique'] ?? json['suggested_technique']) as String?,
     );
   }
 
@@ -50,6 +56,8 @@ class Exercise {
       if (suggestedSets != null) 'suggested_sets': suggestedSets,
       if (suggestedReps != null) 'suggested_reps': suggestedReps,
       if (workoutSpecificNotes != null) 'workout_specific_notes': workoutSpecificNotes,
+      if (groupId != null) 'group_id': groupId,
+      if (suggestedTechnique != null) 'technique': suggestedTechnique,
     };
   }
 }

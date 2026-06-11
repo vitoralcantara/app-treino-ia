@@ -5,6 +5,7 @@ class ExerciseSet {
   final int reps;
   final double weight;
   final DateTime? timestamp;
+  final String? technique; // Novo: Técnica aplicada (drop_set, rest_pause, etc)
 
   ExerciseSet({
     this.id,
@@ -13,6 +14,7 @@ class ExerciseSet {
     required this.reps,
     required this.weight,
     this.timestamp,
+    this.technique,
   });
 
   factory ExerciseSet.fromJson(Map<String, dynamic> json) {
@@ -25,6 +27,7 @@ class ExerciseSet {
       timestamp: json['timestamp'] != null
           ? DateTime.parse(json['timestamp'] as String)
           : null,
+      technique: json['technique'] as String?,
     );
   }
 
@@ -36,6 +39,7 @@ class ExerciseSet {
       'reps': reps,
       'weight': weight,
       if (timestamp != null) 'timestamp': timestamp!.toIso8601String(),
+      if (technique != null) 'technique': technique,
     };
   }
 }

@@ -126,6 +126,7 @@ class _WorkoutExecutionScreenState extends ConsumerState<WorkoutExecutionScreen>
             reps: s.reps,
             weight: s.weight,
             exerciseId: exercise.id,
+            technique: s.technique,
           )).toList();
           _completedSets[exercise.id!] = List.generate(previousSets.length, (_) => false);
         } else {
@@ -135,7 +136,12 @@ class _WorkoutExecutionScreenState extends ConsumerState<WorkoutExecutionScreen>
           
           _setsByExercise[exercise.id!] = List.generate(
             suggestedSets, 
-            (_) => ExerciseSet(reps: suggestedReps, weight: 0, exerciseId: exercise.id),
+            (_) => ExerciseSet(
+              reps: suggestedReps, 
+              weight: 0, 
+              exerciseId: exercise.id,
+              technique: exercise.suggestedTechnique,
+            ),
           );
           _completedSets[exercise.id!] = List.generate(suggestedSets, (_) => false);
         }
@@ -148,164 +154,19 @@ class _WorkoutExecutionScreenState extends ConsumerState<WorkoutExecutionScreen>
 
     setState(() {
       _dynamicExercises.add(exercise);
-      _setsByExercise[exercise.id!] = [
-        ExerciseSet(reps: 10, weight: 0, exerciseId: exercise.id),
-      ];
-      _completedSets[exercise.id!] = [false];
+      final suggestedSets = exercise.suggestedSets ?? 3;
+      final suggestedReps = exercise.suggestedReps ?? 10;
+      _setsByExercise[exercise.id!] = List.generate(
+        suggestedSets, 
+        (_) => ExerciseSet(
+          reps: suggestedReps, 
+          weight: 0, 
+          exerciseId: exercise.id,
+          technique: exercise.suggestedTechnique,
+        ),
+      );
+      _completedSets[exercise.id!] = List.generate(suggestedSets, (_) => false);
     });
-
-    // Opcional: Salvar no treino original para sempre
-    _confirmSaveToWorkout(exercise);
-  }
-
-  void _confirmSaveToWorkout(Exercise exercise) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Salvar na Rotina?'),
-        content: Text('Deseja adicionar "${exercise.name}" permanentemente a este treino para as próximas vezes?'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Apenas Hoje')),
-          ElevatedButton(
-            onPressed: () {
-              ref.read(workoutListProvider.notifier).addExerciseToWorkout(widget.workout.id!, exercise.id!);
-              Navigator.pop(context);
-            },
-            child: const Text('Salvar Sempre'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showAddExerciseDialog() {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      builder: (context) => DraggableScrollableSheet(
-        expand: false,
-        initialChildSize: 0.7,
-        builder: (context, scrollController) => Column(
-          children: [
-            const Padding(
-              padding: EdgeInsets.all(16.0),
-              child: Text('Adicionar Exercício', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            ),
-            Expanded(
-              child: Consumer(
-                builder: (context, ref, child) {
-                  final exerciseListAsync = ref.watch(exerciseListProvider);
-                  return exerciseListAsync.when(
-                    data: (exercises) => ListView.builder(
-                      controller: scrollController,
-                      itemCount: exercises.length + 1,
-                      itemBuilder: (context, index) {
-                        if (index == exercises.length) {
-                          return ListTile(
-                            leading: const Icon(Icons.add_circle, color: Colors.green),
-                            title: const Text('Criar Novo Exercício'),
-                            onTap: () {
-                              Navigator.pop(context);
-                              _showCreateCustomExerciseDialog();
-                            },
-                          );
-                        }
-                        final ex = exercises[index];
-                        return ListTile(
-                          title: Text(ex.name),
-                          subtitle: Text(ex.category ?? ''),
-                          onTap: () {
-                            _addNewExercise(ex);
-                            Navigator.pop(context);
-                          },
-                        );
-                      },
-                    ),
-                    loading: () => const Center(child: CircularProgressIndicator()),
-                    error: (e, _) => Center(child: Text('Erro: $e')),
-                  );
-                },
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  void _showCreateCustomExerciseDialog() {
-    final nameController = TextEditingController();
-    final categoryController = TextEditingController();
-    String? pickedImagePath;
-
-    showDialog(
-      context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setStateDialog) => AlertDialog(
-          title: const Text('Novo Exercício'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(controller: nameController, decoration: const InputDecoration(labelText: 'Nome')),
-              TextField(controller: categoryController, decoration: const InputDecoration(labelText: 'Categoria (Peito, Pernas...)')),
-              const SizedBox(height: 16),
-              if (pickedImagePath != null)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 8.0),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(8.0),
-                    child: Image.file(
-                      File(pickedImagePath!),
-                      height: 100,
-                      width: double.infinity,
-                      fit: BoxFit.cover,
-                    ),
-                  ),
-                ),
-              ElevatedButton.icon(
-                onPressed: () async {
-                  final ImagePicker picker = ImagePicker();
-                  final XFile? image = await picker.pickImage(source: ImageSource.gallery);
-                  if (image != null) {
-                    setStateDialog(() {
-                      pickedImagePath = image.path;
-                    });
-                  }
-                },
-                icon: const Icon(Icons.photo_library),
-                label: const Text('Selecionar Imagem da Galeria'),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')),
-            ElevatedButton(
-              onPressed: () async {
-                if (nameController.text.isNotEmpty) {
-                  final exercise = Exercise(
-                    name: nameController.text, 
-                    category: categoryController.text,
-                    imageUrl: pickedImagePath, // Usa o caminho local
-                  );
-                  await ref.read(exerciseListProvider.notifier).addExercise(exercise);
-                  
-                  // Buscar o exercício recém criado no banco via provider
-                  final db = ref.read(databaseProvider);
-                  final updatedList = await db.getAllExercises();
-                  final newEx = updatedList.firstWhere((e) => e.name == exercise.name);
-
-                  if (context.mounted) {
-                    Navigator.pop(context);
-                    _addNewExercise(newEx);
-                  }
-                }
-              },
-              child: const Text('Criar'),
-            ),
-          ],
-        ),
-      ),
-    );
   }
 
   void _addSet(int exerciseId) {
@@ -316,6 +177,7 @@ class _WorkoutExecutionScreenState extends ConsumerState<WorkoutExecutionScreen>
           reps: lastSet.reps,
           weight: lastSet.weight,
           exerciseId: exerciseId,
+          technique: lastSet.technique,
         ),
       );
       _completedSets[exerciseId]!.add(false);
@@ -325,7 +187,6 @@ class _WorkoutExecutionScreenState extends ConsumerState<WorkoutExecutionScreen>
   void _finishWorkout() async {
     final List<ExerciseSet> completedSetsList = [];
     
-    // Salvar APENAS as séries que foram marcadas como concluídas
     _setsByExercise.forEach((exerciseId, sets) {
       final completedStatus = _completedSets[exerciseId]!;
       for (int i = 0; i < sets.length; i++) {
@@ -402,11 +263,12 @@ class _WorkoutExecutionScreenState extends ConsumerState<WorkoutExecutionScreen>
                         final date = DateTime.parse(dateStr);
                         final reps = record['reps'];
                         final weight = record['weight'];
+                        final tech = record['technique'] as String?;
 
                         return ListTile(
                           leading: const Icon(Icons.fitness_center),
                           title: Text('$weight kg x $reps reps'),
-                          subtitle: Text('${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}'),
+                          subtitle: Text('${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year} ${tech != null ? "($tech)" : ""}'),
                         );
                       },
                     ),
@@ -442,10 +304,9 @@ class _WorkoutExecutionScreenState extends ConsumerState<WorkoutExecutionScreen>
                 exercise.id!, 
                 controller.text,
               );
-              if (mounted) {
-                // Atualizar o objeto local para refletir na UI sem precisar recarregar tudo
+              if (context.mounted) {
                 setState(() {
-                  final index = _dynamicExercises.indexOf(exercise);
+                  final index = _dynamicExercises.indexWhere((e) => e.id == exercise.id);
                   if (index != -1) {
                     _dynamicExercises[index] = Exercise(
                       id: exercise.id,
@@ -458,12 +319,12 @@ class _WorkoutExecutionScreenState extends ConsumerState<WorkoutExecutionScreen>
                       suggestedSets: exercise.suggestedSets,
                       suggestedReps: exercise.suggestedReps,
                       workoutSpecificNotes: controller.text,
+                      groupId: exercise.groupId,
+                      suggestedTechnique: exercise.suggestedTechnique,
                     );
                   }
                 });
-                if (context.mounted) {
-                  Navigator.of(context).pop();
-                }
+                Navigator.of(context).pop();
               }
             },
             child: const Text('Salvar'),
@@ -473,8 +334,65 @@ class _WorkoutExecutionScreenState extends ConsumerState<WorkoutExecutionScreen>
     );
   }
 
+  void _toggleTechnique(int exerciseId, int setIndex) {
+    final sets = _setsByExercise[exerciseId]!;
+    final currentTech = sets[setIndex].technique;
+    String? nextTech;
+    
+    if (currentTech == null) nextTech = 'drop_set';
+    else if (currentTech == 'drop_set') nextTech = 'rest_pause';
+    else nextTech = null;
+
+    setState(() {
+      sets[setIndex] = ExerciseSet(
+        reps: sets[setIndex].reps,
+        weight: sets[setIndex].weight,
+        exerciseId: exerciseId,
+        technique: nextTech,
+      );
+    });
+
+    if (nextTech != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Técnica: ${nextTech == 'drop_set' ? 'Drop Set' : 'Rest Pause'} aplicada!'),
+          duration: const Duration(seconds: 1),
+        ),
+      );
+    }
+  }
+
+  IconData _getTechniqueIcon(String technique) {
+    if (technique == 'drop_set') return Icons.arrow_downward;
+    if (technique == 'rest_pause') return Icons.timer_outlined;
+    return Icons.help;
+  }
+
   @override
   Widget build(BuildContext context) {
+    // Agrupar exercícios por groupId para exibição
+    final List<List<Exercise>> groupedExercises = [];
+    String? currentGroupId;
+    List<Exercise> currentGroup = [];
+
+    for (var ex in _dynamicExercises) {
+      if (ex.groupId != null && ex.groupId!.isNotEmpty) {
+        if (ex.groupId == currentGroupId) {
+          currentGroup.add(ex);
+        } else {
+          if (currentGroup.isNotEmpty) groupedExercises.add(List.from(currentGroup));
+          currentGroup = [ex];
+          currentGroupId = ex.groupId;
+        }
+      } else {
+        if (currentGroup.isNotEmpty) groupedExercises.add(List.from(currentGroup));
+        groupedExercises.add([ex]);
+        currentGroup = [];
+        currentGroupId = null;
+      }
+    }
+    if (currentGroup.isNotEmpty) groupedExercises.add(currentGroup);
+
     return Scaffold(
       appBar: AppBar(
         title: Text('Executando: ${widget.workout.name}'),
@@ -565,206 +483,222 @@ class _WorkoutExecutionScreenState extends ConsumerState<WorkoutExecutionScreen>
             child: _dynamicExercises.isEmpty
                 ? const Center(child: Text('Este treino não tem exercícios.'))
                 : ListView.builder(
-                    itemCount: _dynamicExercises.length,
-                    itemBuilder: (context, index) {
-                      final exercise = _dynamicExercises[index];
-                      final sets = _setsByExercise[exercise.id!] ?? [];
+                    itemCount: groupedExercises.length,
+                    itemBuilder: (context, groupIndex) {
+                      final group = groupedExercises[groupIndex];
+                      final isSuperSet = group.length > 1;
 
-                      return Card(
-                        margin: const EdgeInsets.all(8.0),
-                        child: Padding(
-                          padding: const EdgeInsets.all(8.0),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  if (exercise.imageUrl != null && exercise.imageUrl!.isNotEmpty)
-                                    Padding(
-                                      padding: const EdgeInsets.only(right: 12.0),
-                                      child: ClipRRect(
-                                        borderRadius: BorderRadius.circular(8.0),
-                                        child: exercise.imageUrl!.startsWith('http')
-                                            ? Image.network(
-                                                exercise.imageUrl!,
-                                                width: 60,
-                                                height: 60,
-                                                fit: BoxFit.cover,
-                                                errorBuilder: (context, error, stackTrace) => Container(
-                                                  width: 60,
-                                                  height: 60,
-                                                  color: Colors.grey.shade800,
-                                                  child: const Icon(Icons.broken_image, color: Colors.grey),
+                      return Container(
+                        margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        decoration: isSuperSet ? BoxDecoration(
+                          border: Border.all(color: Colors.blueAccent.withValues(alpha: 0.5), width: 2),
+                          borderRadius: BorderRadius.circular(16),
+                        ) : null,
+                        child: Column(
+                          children: [
+                            if (isSuperSet)
+                              Container(
+                                width: double.infinity,
+                                padding: const EdgeInsets.symmetric(vertical: 4),
+                                decoration: const BoxDecoration(
+                                  color: Colors.blueAccent,
+                                  borderRadius: BorderRadius.only(topLeft: Radius.circular(14), topRight: Radius.circular(14)),
+                                ),
+                                child: Text(
+                                  group.length == 2 ? 'BI-SET' : (group.length == 3 ? 'TRI-SET' : 'SUPER SÉRIE'),
+                                  textAlign: TextAlign.center,
+                                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 10),
+                                ),
+                              ),
+                            ...group.map((exercise) {
+                              final sets = _setsByExercise[exercise.id!] ?? [];
+                              return Card(
+                                margin: EdgeInsets.all(isSuperSet ? 8 : 4),
+                                child: Padding(
+                                  padding: const EdgeInsets.all(12.0),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Row(
+                                        children: [
+                                          if (exercise.imageUrl != null && exercise.imageUrl!.isNotEmpty)
+                                            Padding(
+                                              padding: const EdgeInsets.only(right: 12.0),
+                                              child: ClipRRect(
+                                                borderRadius: BorderRadius.circular(8.0),
+                                                child: exercise.imageUrl!.startsWith('http')
+                                                    ? Image.network(
+                                                        exercise.imageUrl!,
+                                                        width: 60,
+                                                        height: 60,
+                                                        fit: BoxFit.cover,
+                                                        errorBuilder: (context, error, stackTrace) => Container(
+                                                          width: 60,
+                                                          height: 60,
+                                                          color: Colors.grey.shade800,
+                                                          child: const Icon(Icons.broken_image, color: Colors.grey),
+                                                        ),
+                                                      )
+                                                    : Image.file(
+                                                        File(exercise.imageUrl!),
+                                                        width: 60,
+                                                        height: 60,
+                                                        fit: BoxFit.cover,
+                                                        errorBuilder: (context, error, stackTrace) => Container(
+                                                          width: 60,
+                                                          height: 60,
+                                                          color: Colors.grey.shade800,
+                                                          child: const Icon(Icons.broken_image, color: Colors.grey),
+                                                        ),
+                                                      ),
+                                              ),
+                                            ),
+                                          Expanded(
+                                            child: Column(
+                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                              children: [
+                                                Text(
+                                                  exercise.name,
+                                                  style: Theme.of(context).textTheme.titleLarge,
                                                 ),
-                                              )
-                                            : Image.file(
-                                                File(exercise.imageUrl!),
-                                                width: 60,
-                                                height: 60,
-                                                fit: BoxFit.cover,
-                                                errorBuilder: (context, error, stackTrace) => Container(
-                                                  width: 60,
-                                                  height: 60,
-                                                  color: Colors.grey.shade800,
-                                                  child: const Icon(Icons.broken_image, color: Colors.grey),
+                                                if (exercise.category != null)
+                                                  Text(
+                                                    exercise.category!,
+                                                    style: const TextStyle(color: Colors.grey, fontSize: 12),
+                                                  ),
+                                              ],
+                                            ),
+                                          ),
+                                          if (exercise.videoUrl != null && exercise.videoUrl!.isNotEmpty)
+                                            IconButton(
+                                              icon: const Icon(Icons.play_circle_fill, color: Colors.blueAccent),
+                                              tooltip: 'Ver execução',
+                                              onPressed: () => _launchVideo(exercise.videoUrl!),
+                                            ),
+                                          IconButton(
+                                            icon: const Icon(Icons.edit_note, color: Colors.blueAccent),
+                                            tooltip: 'Observações do treino',
+                                            onPressed: () => _showExerciseNotesDialog(exercise),
+                                          ),
+                                          IconButton(
+                                            icon: const Icon(Icons.history, color: Colors.blueAccent),
+                                            tooltip: 'Histórico de Cargas',
+                                            onPressed: () => _showExerciseHistory(exercise),
+                                          ),
+
+                                        ],
+                                      ),
+                                      if (exercise.workoutSpecificNotes != null && exercise.workoutSpecificNotes!.isNotEmpty)
+                                        Padding(
+                                          padding: const EdgeInsets.only(top: 4.0, bottom: 8.0),
+                                          child: Text(
+                                            'Obs: ${exercise.workoutSpecificNotes}',
+                                            style: TextStyle(fontSize: 12, color: Colors.blue.shade200, fontStyle: FontStyle.italic),
+                                          ),
+                                        ),
+                                      const SizedBox(height: 8),
+                                      ...sets.asMap().entries.map((entry) {
+                                        int setIndex = entry.key;
+                                        ExerciseSet set = entry.value;
+                                        bool isCompleted = _completedSets[exercise.id!]![setIndex];
+
+                                        return Padding(
+                                          padding: const EdgeInsets.symmetric(vertical: 4.0),
+                                          child: Row(
+                                            children: [
+                                              GestureDetector(
+                                                onTap: () => _toggleTechnique(exercise.id!, setIndex),
+                                                child: CircleAvatar(
+                                                  radius: 14,
+                                                  backgroundColor: isCompleted ? Colors.green : Colors.grey.shade700,
+                                                  child: set.technique == null 
+                                                    ? Text('${setIndex + 1}', style: const TextStyle(fontSize: 12, color: Colors.white))
+                                                    : Icon(_getTechniqueIcon(set.technique!), size: 14, color: Colors.white),
                                                 ),
                                               ),
-                                      ),
-                                    ),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          exercise.name,
-                                          style: Theme.of(context).textTheme.titleLarge,
-                                        ),
-                                        if (exercise.category != null)
-                                          Text(
-                                            exercise.category!,
-                                            style: const TextStyle(color: Colors.grey, fontSize: 12),
+                                              const SizedBox(width: 8),
+                                              Expanded(
+                                                child: TextFormField(
+                                                  initialValue: set.reps.toString(),
+                                                  keyboardType: TextInputType.number,
+                                                  decoration: const InputDecoration(
+                                                    labelText: 'Reps',
+                                                    isDense: true,
+                                                    border: OutlineInputBorder(),
+                                                  ),
+                                                  onChanged: (val) {
+                                                    sets[setIndex] = ExerciseSet(
+                                                      reps: int.tryParse(val) ?? 0,
+                                                      weight: sets[setIndex].weight,
+                                                      exerciseId: exercise.id,
+                                                      technique: sets[setIndex].technique,
+                                                    );
+                                                  },
+                                                ),
+                                              ),
+                                              const SizedBox(width: 8),
+                                              Expanded(
+                                                child: TextFormField(
+                                                  initialValue: set.weight.toString(),
+                                                  keyboardType: TextInputType.number,
+                                                  decoration: const InputDecoration(
+                                                    labelText: 'Peso (kg)',
+                                                    isDense: true,
+                                                    border: OutlineInputBorder(),
+                                                  ),
+                                                  onChanged: (val) {
+                                                    sets[setIndex] = ExerciseSet(
+                                                      reps: sets[setIndex].reps,
+                                                      weight: double.tryParse(val) ?? 0,
+                                                      exerciseId: exercise.id,
+                                                      technique: sets[setIndex].technique,
+                                                    );
+                                                  },
+                                                ),
+                                              ),
+                                              Checkbox(
+                                                value: isCompleted,
+                                                onChanged: (val) {
+                                                  setState(() {
+                                                    _completedSets[exercise.id!]![setIndex] = val ?? false;
+                                                  });
+                                                },
+                                              ),
+                                              IconButton(
+                                                icon: const Icon(Icons.delete, color: Colors.red),
+                                                onPressed: () {
+                                                  setState(() {
+                                                    sets.removeAt(setIndex);
+                                                    _completedSets[exercise.id!]!.removeAt(setIndex);
+                                                  });
+                                                },
+                                              ),
+                                            ],
                                           ),
-                                      ],
-                                    ),
-                                  ),
-                                  if (exercise.videoUrl != null && exercise.videoUrl!.isNotEmpty)
-                                    IconButton(
-                                      icon: const Icon(Icons.play_circle_fill, color: Colors.blueAccent),
-                                      tooltip: 'Ver execução',
-                                      onPressed: () => _launchVideo(exercise.videoUrl!),
-                                    ),
-                                  IconButton(
-                                    icon: const Icon(Icons.edit_note, color: Colors.blueAccent),
-                                    tooltip: 'Observações do treino',
-                                    onPressed: () => _showExerciseNotesDialog(exercise),
-                                  ),
-                                  IconButton(
-                                    icon: const Icon(Icons.history, color: Colors.blueAccent),
-                                    tooltip: 'Histórico de Cargas',
-                                    onPressed: () => _showExerciseHistory(exercise),
-                                  ),
-
-                                ],
-                              ),
-                              if (exercise.workoutSpecificNotes != null && exercise.workoutSpecificNotes!.isNotEmpty)
-                                Padding(
-                                  padding: const EdgeInsets.only(top: 4.0, bottom: 8.0),
-                                  child: Text(
-                                    'Obs: ${exercise.workoutSpecificNotes}',
-                                    style: TextStyle(fontSize: 12, color: Colors.blue.shade200, fontStyle: FontStyle.italic),
-                                  ),
-                                ),
-                              const SizedBox(height: 8),
-                              ...sets.asMap().entries.map((entry) {
-                                int setIndex = entry.key;
-                                ExerciseSet set = entry.value;
-                                bool isCompleted = _completedSets[exercise.id!]![setIndex];
-
-                                return Padding(
-                                  padding: const EdgeInsets.symmetric(vertical: 4.0),
-                                  child: Row(
-                                    children: [
-                                      CircleAvatar(
-                                        radius: 14,
-                                        backgroundColor: isCompleted ? Colors.green : Colors.grey.shade700,
-                                        child: Text(
-                                          '${setIndex + 1}', 
-                                          style: const TextStyle(fontSize: 12, color: Colors.white, fontWeight: FontWeight.bold)
-                                        ),
-                                      ),
-                                      const SizedBox(width: 12),
-                                      Expanded(
-                                        child: TextFormField(
-                                          initialValue: set.reps.toString(),
-                                          keyboardType: TextInputType.number,
-                                          decoration: const InputDecoration(
-                                            labelText: 'Reps',
-                                            isDense: true,
-                                            border: OutlineInputBorder(),
-                                          ),
-                                          onChanged: (val) {
-                                            sets[setIndex] = ExerciseSet(
-                                              reps: int.tryParse(val) ?? 0,
-                                              weight: sets[setIndex].weight,
-                                              exerciseId: exercise.id,
-                                            );
-                                          },
-                                        ),
-                                      ),
-                                      const SizedBox(width: 8),
-                                      Expanded(
-                                        child: TextFormField(
-                                          initialValue: set.weight.toString(),
-                                          keyboardType: TextInputType.number,
-                                          decoration: const InputDecoration(
-                                            labelText: 'Peso (kg)',
-                                            isDense: true,
-                                            border: OutlineInputBorder(),
-                                          ),
-                                          onChanged: (val) {
-                                            sets[setIndex] = ExerciseSet(
-                                              reps: sets[setIndex].reps,
-                                              weight: double.tryParse(val) ?? 0.0,
-                                              exerciseId: exercise.id,
-                                            );
-                                          },
-                                        ),
-                                      ),
-                                      Checkbox(
-                                        value: isCompleted,
-                                        activeColor: Colors.green,
-                                        onChanged: (val) {
-                                          setState(() {
-                                            _completedSets[exercise.id!]![setIndex] = val ?? false;
-                                          });
-                                        },
-                                      ),
-                                      IconButton(
-                                        icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
-                                        onPressed: () {
-                                          setState(() {
-                                            sets.removeAt(setIndex);
-                                            _completedSets[exercise.id!]!.removeAt(setIndex);
-                                          });
-                                        },
+                                        );
+                                      }),
+                                      TextButton.icon(
+                                        onPressed: () => _addSet(exercise.id!),
+                                        icon: const Icon(Icons.add),
+                                        label: const Text('Adicionar Série'),
                                       ),
                                     ],
                                   ),
-                                );
-                              }),
-                              Align(
-                                alignment: Alignment.centerRight,
-                                child: TextButton.icon(
-                                  onPressed: () => _addSet(exercise.id!),
-                                  icon: const Icon(Icons.add),
-                                  label: const Text('Adicionar Série'),
                                 ),
-                              ),
-                            ],
-                          ),
+                              );
+                            }),
+                          ],
                         ),
                       );
                     },
                   ),
           ),
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-            child: ElevatedButton.icon(
-              onPressed: _showAddExerciseDialog,
-              icon: const Icon(Icons.add_circle_outline),
-              label: const Text('Adicionar Novo Exercício Hoje'),
-              style: ElevatedButton.styleFrom(
-                minimumSize: const Size.fromHeight(50),
-              ),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16.0, 0, 16.0, 16.0),
+            padding: const EdgeInsets.all(16.0),
             child: ElevatedButton.icon(
               onPressed: _finishWorkout,
-              icon: const Icon(Icons.check_circle),
-              label: const Text('Concluir Treino', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+              icon: const Icon(Icons.check_circle_outline),
+              label: const Text('Finalizar Treino'),
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.green,
                 foregroundColor: Colors.white,

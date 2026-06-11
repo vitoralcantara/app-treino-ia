@@ -43,7 +43,11 @@ Tente utilizar preferencialmente estes exercícios na criação do treino. Se pr
     return '''
 Atue como um Personal Trainer. Com base no meu pedido abaixo e no meu perfil físico, crie uma rotina de treinos estruturada.
 Se eu pedir uma rotina (como ABC), crie uma lista com todos os treinos.
-Responda EXCLUSIVAMENTE com o código JSON puro, sem textos antes ou depois, seguindo exatamente este formato (uma lista de treinos):
+Utilize técnicas avançadas se achar pertinente ou se eu pedir:
+- **Bi-set/Tri-set/Super Série**: Agrupe exercícios usando o campo "group" com o mesmo ID (ex: "super1").
+- **Drop set/Rest-pause**: Sugira a técnica no campo "technique" (valores: "drop_set", "rest_pause").
+
+Responda EXCLUSIVAMENTE com o código JSON puro, sem textos antes ou depois, seguindo exatamente este formato:
 
 [
   {
@@ -54,19 +58,29 @@ Responda EXCLUSIVAMENTE com o código JSON puro, sem textos antes ou depois, seg
         "category": "Peito",
         "suggested_sets": 4,
         "suggested_reps": 10,
-        "notes": "Focar na cadência 3-1-1 (descida lenta)"
-      }
-    ]
-  },
-  {
-    "name": "Treino B - Costas e Bíceps",
-    "exercises": [
+        "notes": "Focar na cadência 3-1-1"
+      },
       {
-        "name": "Puxada Alta",
-        "category": "Costas",
+        "name": "Crucifixo Inclinado",
+        "category": "Peito",
         "suggested_sets": 3,
         "suggested_reps": 12,
-        "notes": "Esmagar as escápulas no final do movimento"
+        "group": "super1"
+      },
+      {
+        "name": "Flexão de Braços",
+        "category": "Peito",
+        "suggested_sets": 3,
+        "suggested_reps": 15,
+        "group": "super1",
+        "notes": "Até a falha"
+      },
+      {
+        "name": "Tríceps Corda",
+        "category": "Tríceps",
+        "suggested_sets": 3,
+        "suggested_reps": 10,
+        "technique": "drop_set"
       }
     ]
   }
