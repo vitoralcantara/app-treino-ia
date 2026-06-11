@@ -317,7 +317,10 @@ Future<void> activateRoutine(int routineId) async {
       int exerciseId = exercise.id ?? 0;
       
       if (exerciseId == 0) {
-         exerciseId = await db.insert('exercises', exercise.toJson());
+         // Não incluir notas específicas de treino na tabela geral de exercícios
+         final exerciseMap = exercise.toJson();
+         exerciseMap.remove('workout_specific_notes');
+         exerciseId = await db.insert('exercises', exerciseMap);
       }
 
       await db.insert('workout_exercises', {
