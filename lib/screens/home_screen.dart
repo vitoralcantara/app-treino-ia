@@ -6,6 +6,7 @@ import '../models/workout.dart';
 import '../models/routine.dart';
 import '../services/ai_prompt_helper.dart';
 import '../providers/workout_provider.dart';
+import '../services/backup_service.dart';
 import 'workout_execution_screen.dart';
 import 'workout_details_screen.dart';
 import 'ai_screen.dart';
@@ -25,6 +26,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   void initState() {
     super.initState();
     _checkDisclaimer();
+    _checkBackupReminder();
   }
 
   Future<void> _checkDisclaimer() async {
@@ -34,6 +36,46 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     if (!accepted && mounted) {
       _showDisclaimerDialog();
     }
+  }
+
+  Future<void> _checkBackupReminder() async {
+    final backupService = BackupService();
+    if (await backupService.shouldShowBackupReminder()) {
+      if (mounted) {
+        _showBackupReminderDialog();
+      }
+    }
+  }
+
+  void _showBackupReminderDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.backup_outlined, color: Colors.blue),
+            SizedBox(width: 10),
+            Text('Backup Mensal'),
+          ],
+        ),
+        content: const Text(
+          'Faz mais de um mês desde o seu último backup. Que tal salvar seus treinos e histórico agora?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Lembrar Depois'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              await BackupService().exportBackup();
+            },
+            child: const Text('Fazer Backup Agora'),
+          ),
+        ],
+      ),
+    );
   }
 
   void _showDisclaimerDialog() {

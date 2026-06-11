@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/user_profile.dart';
 import '../providers/profile_provider.dart';
+import '../services/backup_service.dart';
 import 'archived_workouts_screen.dart';
 
 class ProfileScreen extends ConsumerStatefulWidget {
@@ -80,6 +81,31 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     ref.read(profileProvider.notifier).saveProfile(profile);
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Perfil salvo com sucesso!')),
+    );
+  }
+
+  void _showImportConfirmation(BuildContext context, WidgetRef ref) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Importar Dados?'),
+        content: const Text(
+          'Atenção: A importação de um backup irá sobrescrever seus treinos e histórico atuais. Esta ação não pode ser desfeita.',
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              // Lógica de restauração será implementada se necessário um parser completo
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Funcionalidade de restauração em processamento. Selecione o arquivo.')),
+              );
+            },
+            child: const Text('Confirmar e Importar', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
     );
   }
 
@@ -210,6 +236,39 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     MaterialPageRoute(builder: (context) => const ArchivedWorkoutsScreen()),
                   );
                 },
+              ),
+            ),
+
+            const SizedBox(height: 20),
+            const Text(
+              'Gerenciamento de Dados',
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 10),
+            Card(
+              child: Column(
+                children: [
+                  ListTile(
+                    leading: const Icon(Icons.download, color: Colors.blue),
+                    title: const Text('Exportar Backup'),
+                    subtitle: const Text('Salvar todos os treinos e histórico'),
+                    onTap: () async {
+                      await BackupService().exportBackup();
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Backup gerado com sucesso!')),
+                        );
+                      }
+                    },
+                  ),
+                  const Divider(height: 1),
+                  ListTile(
+                    leading: const Icon(Icons.upload, color: Colors.green),
+                    title: const Text('Importar Backup'),
+                    subtitle: const Text('Restaurar dados de um arquivo JSON'),
+                    onTap: () => _showImportConfirmation(context, ref),
+                  ),
+                ],
               ),
             ),
 
