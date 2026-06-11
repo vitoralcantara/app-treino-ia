@@ -6,7 +6,14 @@ import 'services/notification_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await NotificationService().init();
+  
+  // Inicialização segura para evitar crashes se o serviço de notificação falhar
+  try {
+    await NotificationService().init();
+  } catch (e) {
+    debugPrint('Erro ao inicializar notificações: $e');
+  }
+
   runApp(
     const ProviderScope(
       child: MyApp(),
