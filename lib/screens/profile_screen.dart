@@ -362,7 +362,21 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 style: TextStyle(fontSize: 12),
               ),
               const SizedBox(height: 20),
-              const Icon(Icons.qr_code_2, size: 64, color: Colors.white70),
+              Container(
+                width: 150,
+                height: 150,
+                decoration: BoxDecoration(
+                  border: Border.all(color: Colors.grey.withValues(alpha: 0.3)),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: Image.asset(
+                    'qr-code.png',
+                    fit: BoxFit.contain,
+                  ),
+                ),
+              ),
               const SizedBox(height: 8),
               const Text(
                 'PIX Copia e Cola',
