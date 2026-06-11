@@ -150,12 +150,35 @@ Formato Exato:
   }
 
   Future<void> _generateWithAi() async {
-    if (_requestController.text.isEmpty) return;
+    if (_requestController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Por favor, descreva o treino que deseja gerar.')),
+      );
+      return;
+    }
 
     final aiService = ref.read(aiServiceProvider);
     if (aiService == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Configure sua API Key nas configurações primeiro.')),
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('API Key Necessária'),
+          content: const Text('Para usar a geração automática, você precisa configurar sua Google Gemini API Key na tela de Perfil.'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Entendi'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.pop(context);
+                // A navegação para o perfil depende de como o HomeScreen gerencia as abas,
+                // mas geralmente avisar o usuário é o primeiro passo.
+              },
+              child: const Text('Ir para Perfil'),
+            ),
+          ],
+        ),
       );
       return;
     }
