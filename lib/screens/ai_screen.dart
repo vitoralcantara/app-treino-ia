@@ -10,6 +10,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../services/ai_prompt_helper.dart';
 import '../providers/workout_provider.dart';
 import '../providers/profile_provider.dart';
+import '../providers/ai_provider.dart';
 import '../models/exercise.dart';
 import '../models/workout.dart';
 import 'exercise_library_screen.dart';
@@ -37,6 +38,7 @@ class _AiScreenContentState extends ConsumerState<AiScreenContent> {
   final _requestController = TextEditingController();
   final _responseController = TextEditingController();
   String _generatedPrompt = '';
+  bool _isLoading = false;
 
   // Keys para o tutorial
   final GlobalKey _step1Key = GlobalKey();
@@ -115,6 +117,56 @@ Formato Exato:
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Prompt copiado! Cole no chat do Gemini.')),
     );
+  }
+
+  Future<void> _generateWithAi() async {
+    if (_requestController.text.isEmpty) return;
+
+    final aiService = ref.read(aiServiceProvider);
+    if (aiService == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Configure sua API Key nas configurações primeiro.')),
+      );
+      return;
+    }
+
+    setState(() => _isLoading = true);
+
+    try {
+      final profile = ref.read(profileProvider);
+      final exercisesAsync = ref.read(exerciseListProvider);
+      final List<Exercise> availableExercises = exercisesAsync.maybeWhen(
+        data: (list) => list.where((e) => e.isAvailable).toList(),
+        orElse: () => [],
+      );
+
+      final prompt = AiPromptHelper.generateCreateWorkoutPrompt(
+        _requestController.text,
+        profile,
+        availableExercises,
+      );
+
+      final response = await aiService.generateWorkout(prompt);
+      
+      setState(() {
+        _responseController.text = response;
+        _isLoading = false;
+      });
+
+      // Se a resposta parece ser um JSON válido, já podemos processar ou pelo menos avisar
+      if (mounted && response.contains('{')) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Treino gerado! Clique em "Importar Texto" para finalizar.')),
+        );
+      }
+    } catch (e) {
+      setState(() => _isLoading = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Erro na geração: $e')),
+        );
+      }
+    }
   }
 
   void _copyJsonInstructions() {
@@ -283,15 +335,42 @@ Formato Exato:
                 maxLines: 2,
               ),
               const SizedBox(height: 10),
-              Showcase(
-                key: _step1Key,
-                description: 'Passo 1: Gere um prompt otimizado com suas preferências para colar no Gemini ou ChatGPT.',
-                child: ElevatedButton.icon(
+              if (ref.watch(aiServiceProvider) != null) ...[
+                Showcase(
+                  key: _step1Key,
+                  description: 'Passo 1: Gere seu treino automaticamente usando o Google Gemini.',
+                  child: ElevatedButton.icon(
+                    onPressed: _isLoading ? null : _generateWithAi,
+                    icon: _isLoading 
+                      ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+                      : const Icon(Icons.auto_awesome),
+                    label: Text(_isLoading ? 'Gerando...' : 'Gerar com Gemini (Auto)'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.deepPurple.shade100,
+                      foregroundColor: Colors.deepPurple,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                const Center(child: Text('OU', style: TextStyle(fontSize: 10, color: Colors.grey))),
+                const SizedBox(height: 10),
+              ],
+              if (ref.watch(aiServiceProvider) == null) 
+                Showcase(
+                  key: _step1Key,
+                  description: 'Passo 1: Gere um prompt otimizado com suas preferências para colar no Gemini ou ChatGPT.',
+                  child: ElevatedButton.icon(
+                    onPressed: _generatePrompt,
+                    icon: const Icon(Icons.copy),
+                    label: const Text('Gerar e Copiar Prompt'),
+                  ),
+                )
+              else
+                OutlinedButton.icon(
                   onPressed: _generatePrompt,
                   icon: const Icon(Icons.copy),
-                  label: const Text('Gerar e Copiar Prompt'),
+                  label: const Text('Copiar Prompt Manual'),
                 ),
-              ),
               const SizedBox(height: 10),
               OutlinedButton.icon(
                 onPressed: _copyJsonInstructions,

@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../models/user_profile.dart';
 import '../providers/profile_provider.dart';
 import '../providers/workout_provider.dart';
+import '../providers/settings_provider.dart';
 import '../services/backup_service.dart';
 import 'archived_workouts_screen.dart';
 
@@ -19,6 +21,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   final _weightController = TextEditingController();
   final _heightController = TextEditingController();
   final _limitationsController = TextEditingController();
+  final _apiKeyController = TextEditingController(); // Controlador para a API Key
   
   // Controladores de Medidas
   final _armController = TextEditingController();
@@ -40,10 +43,13 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   void didChangeDependencies() {
     super.didChangeDependencies();
     final profile = ref.watch(profileProvider);
+    final settings = ref.watch(settingsProvider);
+    
     _ageController.text = profile.age;
     _weightController.text = profile.weight;
     _heightController.text = profile.height;
     _limitationsController.text = profile.limitations;
+    _apiKeyController.text = settings.geminiApiKey ?? '';
     
     _armController.text = profile.arm;
     _chestController.text = profile.chest;
@@ -81,6 +87,14 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       calf: _calfController.text,
     );
     ref.read(profileProvider.notifier).saveProfile(profile);
+    
+    // Salvar API Key
+    if (_apiKeyController.text.isNotEmpty) {
+      ref.read(settingsProvider.notifier).saveApiKey(_apiKeyController.text);
+    } else {
+      ref.read(settingsProvider.notifier).clearApiKey();
+    }
+
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Perfil salvo com sucesso!')),
     );
@@ -295,6 +309,41 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 subtitle: const Text('Conheça o projeto e apoie o desenvolvimento'),
                 trailing: const Icon(Icons.arrow_forward_ios, size: 16),
                 onTap: () => _showAboutDialog(context),
+              ),
+            ),
+
+            const SizedBox(height: 30),
+            const Text(
+              'Integração IA Nativa',
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Gere treinos automaticamente dentro do app (BYOK).',
+              style: TextStyle(color: Colors.grey, fontSize: 12),
+            ),
+            const SizedBox(height: 10),
+            TextField(
+              controller: _apiKeyController,
+              decoration: const InputDecoration(
+                labelText: 'Google Gemini API Key (Opcional)',
+                hintText: 'Cole sua chave AIzaSy...',
+                border: OutlineInputBorder(),
+                prefixIcon: Icon(Icons.key),
+              ),
+              obscureText: true,
+            ),
+            const SizedBox(height: 5),
+            GestureDetector(
+              onTap: () async {
+                final url = Uri.parse('https://aistudio.google.com/app/apikey');
+                if (await canLaunchUrl(url)) {
+                  await launchUrl(url);
+                }
+              },
+              child: const Text(
+                'Obter chave gratuita no Google AI Studio',
+                style: TextStyle(color: Colors.blue, fontSize: 12, decoration: TextDecoration.underline),
               ),
             ),
 
