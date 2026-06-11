@@ -53,7 +53,8 @@ Responda EXCLUSIVAMENTE com o código JSON puro, sem textos antes ou depois, seg
         "name": "Supino Reto",
         "category": "Peito",
         "suggested_sets": 4,
-        "suggested_reps": 10
+        "suggested_reps": 10,
+        "notes": "Focar na cadência 3-1-1 (descida lenta)"
       }
     ]
   },
@@ -64,7 +65,8 @@ Responda EXCLUSIVAMENTE com o código JSON puro, sem textos antes ou depois, seg
         "name": "Puxada Alta",
         "category": "Costas",
         "suggested_sets": 3,
-        "suggested_reps": 12
+        "suggested_reps": 12,
+        "notes": "Esmagar as escápulas no final do movimento"
       }
     ]
   }
