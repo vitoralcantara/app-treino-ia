@@ -320,6 +320,7 @@ Formato Exato:
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: SingleChildScrollView(
+          keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [

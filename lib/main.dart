@@ -26,8 +26,13 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Treino IA',
+    return GestureDetector(
+      onTap: () {
+        // Dismiss keyboard when tapping outside of a focused field
+        FocusManager.instance.primaryFocus?.unfocus();
+      },
+      child: MaterialApp(
+        title: 'Treino IA',
       localizationsDelegates: const [
         GlobalMaterialLocalizations.delegate,
         GlobalWidgetsLocalizations.delegate,
@@ -45,6 +50,7 @@ class MyApp extends StatelessWidget {
         useMaterial3: true,
       ),
       home: const SplashScreen(),
+      ),
     );
   }
 }

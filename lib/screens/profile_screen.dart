@@ -138,6 +138,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     return Padding(
       padding: const EdgeInsets.all(16.0),
       child: SingleChildScrollView(
+        keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
