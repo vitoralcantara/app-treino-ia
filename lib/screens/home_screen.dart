@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/workout.dart';
+import '../models/routine.dart';
 import '../services/ai_prompt_helper.dart';
 import '../providers/workout_provider.dart';
 import 'workout_execution_screen.dart';
@@ -157,143 +158,232 @@ class WorkoutTab extends ConsumerWidget {
       }
     }
 
+    // Progresso do Ciclo
+    final progressFuture = ref.watch(routineProgressProvider);
+
     return Scaffold(
       body: workouts.isEmpty
           ? const Center(child: Text('Nenhum treino criado ainda.'))
-          : Column(
-              children: [
-                Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Container(
-                    padding: const EdgeInsets.all(20.0),
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [Colors.blue.shade800, Colors.blue.shade500],
-                      ),
-                      borderRadius: BorderRadius.circular(20),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.blue.withValues(alpha: 0.4),
-                          blurRadius: 12,
-                          offset: const Offset(0, 6),
-                        ),
-                      ],
-                    ),
-                    child: Column(
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            const Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Sua Rotina ABC',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 20,
-                                    fontWeight: FontWeight.bold,
+          : SingleChildScrollView(
+            child: Column(
+                children: [
+                  // Card de Progresso do Ciclo
+                  progressFuture.when(
+                    data: (data) {
+                      if (data.isEmpty) return const SizedBox.shrink();
+                      
+                      final routine = data['routine'] as Routine;
+                      final sessionCount = data['sessions'] as int;
+                      final suggestedWeeks = data['suggested_weeks'] as int?;
+                      
+                      if (suggestedWeeks == null) return const SizedBox.shrink();
+
+                      // Estimativa de 3 treinos/semana se a IA não especificou
+                      final totalTarget = suggestedWeeks * 3;
+                      final progress = (sessionCount / totalTarget).clamp(0.0, 1.0);
+                      final isComplete = progress >= 1.0;
+
+                      return Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                        child: Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: isComplete ? Colors.green.withValues(alpha: 0.5) : Colors.transparent),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'Ciclo: ${routine.name}',
+                                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                                      ),
+                                      Text(
+                                        isComplete ? 'Ciclo Finalizado! 🎉' : 'Evolução do Ciclo',
+                                        style: TextStyle(fontSize: 11, color: isComplete ? Colors.green : Colors.grey),
+                                      ),
+                                    ],
                                   ),
-                                ),
-                                Text(
-                                  'Total de exercícios na semana',
-                                  style: TextStyle(
-                                    color: Colors.white70,
-                                    fontSize: 13,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                              decoration: BoxDecoration(
-                                color: Colors.white.withValues(alpha: 0.2),
-                                borderRadius: BorderRadius.circular(12),
+                                  if (isComplete)
+                                    ElevatedButton.icon(
+                                      onPressed: () {
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          const SnackBar(content: Text('Vá na aba IA e peça uma revisão do seu treino!')),
+                                        );
+                                      },
+                                      icon: const Icon(Icons.psychology, size: 14),
+                                      label: const Text('Revisar'),
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: Colors.green,
+                                        foregroundColor: Colors.white,
+                                        minimumSize: const Size(0, 30),
+                                        padding: const EdgeInsets.symmetric(horizontal: 10),
+                                      ),
+                                    ),
+                                ],
                               ),
-                              child: Column(
+                              const SizedBox(height: 10),
+                              LinearProgressIndicator(
+                                value: progress,
+                                borderRadius: BorderRadius.circular(10),
+                                minHeight: 6,
+                                backgroundColor: Colors.grey.withValues(alpha: 0.1),
+                                valueColor: AlwaysStoppedAnimation<Color>(isComplete ? Colors.green : Colors.blue),
+                              ),
+                              const SizedBox(height: 6),
+                              Text(
+                                'Treino $sessionCount de $totalTarget (Meta: $suggestedWeeks semanas)',
+                                style: const TextStyle(fontSize: 10, color: Colors.blueGrey),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                    loading: () => const SizedBox.shrink(),
+                    error: (_, __) => const SizedBox.shrink(),
+                  ),
+
+                  Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Container(
+                      padding: const EdgeInsets.all(20.0),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [Colors.blue.shade800, Colors.blue.shade500],
+                        ),
+                        borderRadius: BorderRadius.circular(20),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.blue.withValues(alpha: 0.4),
+                            blurRadius: 12,
+                            offset: const Offset(0, 6),
+                          ),
+                        ],
+                      ),
+                      child: Column(
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              const Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    '$totalExercises',
-                                    style: const TextStyle(
+                                    'Sua Rotina ABC',
+                                    style: TextStyle(
                                       color: Colors.white,
-                                      fontSize: 24,
+                                      fontSize: 20,
                                       fontWeight: FontWeight.bold,
                                     ),
                                   ),
-                                  const Text(
-                                    'Total',
+                                  Text(
+                                    'Total de exercícios na semana',
                                     style: TextStyle(
                                       color: Colors.white70,
-                                      fontSize: 10,
+                                      fontSize: 13,
                                     ),
                                   ),
                                 ],
                               ),
-                            ),
-                          ],
-                        ),
-                        if (nextWorkout != null) ...[
-                          const SizedBox(height: 20),
-                          const Divider(color: Colors.white24),
-                          const SizedBox(height: 10),
-                          Row(
-                            children: [
-                              const Icon(Icons.next_plan, color: Colors.white, size: 20),
-                              const SizedBox(width: 8),
-                              const Text(
-                                'Sugestão para hoje:',
-                                style: TextStyle(color: Colors.white70, fontSize: 14),
-                              ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Text(
-                                  nextWorkout.name,
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                  overflow: TextOverflow.ellipsis,
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withValues(alpha: 0.2),
+                                  borderRadius: BorderRadius.circular(12),
                                 ),
-                              ),
-                              ElevatedButton(
-                                onPressed: () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (context) => WorkoutExecutionScreen(workout: nextWorkout!),
+                                child: Column(
+                                  children: [
+                                    Text(
+                                      '$totalExercises',
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 24,
+                                        fontWeight: FontWeight.bold,
+                                      ),
                                     ),
-                                  );
-                                },
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.white,
-                                  foregroundColor: Colors.blue.shade800,
-                                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                                  minimumSize: const Size(0, 36),
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                    const Text(
+                                      'Total',
+                                      style: TextStyle(
+                                        color: Colors.white70,
+                                        fontSize: 10,
+                                      ),
+                                    ),
+                                  ],
                                 ),
-                                child: const Text('Iniciar', style: TextStyle(fontWeight: FontWeight.bold)),
                               ),
                             ],
                           ),
+                          if (nextWorkout != null) ...[
+                            const SizedBox(height: 20),
+                            const Divider(color: Colors.white24),
+                            const SizedBox(height: 10),
+                            Row(
+                              children: [
+                                const Icon(Icons.next_plan, color: Colors.white, size: 20),
+                                const SizedBox(width: 8),
+                                const Text(
+                                  'Sugestão para hoje:',
+                                  style: TextStyle(color: Colors.white70, fontSize: 14),
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    nextWorkout.name,
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                                ElevatedButton(
+                                  onPressed: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) => WorkoutExecutionScreen(workout: nextWorkout!),
+                                      ),
+                                    );
+                                  },
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.white,
+                                    foregroundColor: Colors.blue.shade800,
+                                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                                    minimumSize: const Size(0, 36),
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                  ),
+                                  child: const Text('Iniciar', style: TextStyle(fontWeight: FontWeight.bold)),
+                                ),
+                              ],
+                            ),
+                          ],
                         ],
+                      ),
+                    ),
+                  ),
+                  const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 16.0),
+                    child: Row(
+                      children: [
+                        Text(
+                          'Meus Treinos',
+                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                        ),
                       ],
                     ),
                   ),
-                ),
-                const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 16.0),
-                  child: Row(
-                    children: [
-                      Text(
-                        'Meus Treinos',
-                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                      ),
-                    ],
-                  ),
-                ),
-                Expanded(
-                  child: ListView.builder(
+                  ListView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
                     itemCount: workouts.length,
                     itemBuilder: (context, index) {
                       final workout = workouts[index];
@@ -349,9 +439,9 @@ class WorkoutTab extends ConsumerWidget {
                       );
                     },
                   ),
-                ),
-              ],
-            ),
+                ],
+              ),
+          ),
       floatingActionButton: FloatingActionButton(
         onPressed: () => _showAddWorkoutDialog(context, ref),
         child: const Icon(Icons.add),

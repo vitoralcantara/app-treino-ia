@@ -42,49 +42,27 @@ Tente utilizar preferencialmente estes exercícios na criação do treino. Se pr
 
     return '''
 Atue como um Personal Trainer. Com base no meu pedido abaixo e no meu perfil físico, crie uma rotina de treinos estruturada.
-Se eu pedir uma rotina (como ABC), crie uma lista com todos os treinos.
-Utilize técnicas avançadas se achar pertinente ou se eu pedir:
-- **Bi-set/Tri-set/Super Série**: Agrupe exercícios usando o campo "group" com o mesmo ID (ex: "super1").
-- **Drop set/Rest-pause**: Sugira a técnica no campo "technique" (valores: "drop_set", "rest_pause").
+Responda EXCLUSIVAMENTE com o código JSON puro seguindo este formato exato:
 
-Responda EXCLUSIVAMENTE com o código JSON puro, sem textos antes ou depois, seguindo exatamente este formato:
-
-[
-  {
-    "name": "Treino A - Peito e Tríceps",
-    "exercises": [
-      {
-        "name": "Supino Reto",
-        "category": "Peito",
-        "suggested_sets": 4,
-        "suggested_reps": 10,
-        "notes": "Focar na cadência 3-1-1"
-      },
-      {
-        "name": "Crucifixo Inclinado",
-        "category": "Peito",
-        "suggested_sets": 3,
-        "suggested_reps": 12,
-        "group": "super1"
-      },
-      {
-        "name": "Flexão de Braços",
-        "category": "Peito",
-        "suggested_sets": 3,
-        "suggested_reps": 15,
-        "group": "super1",
-        "notes": "Até a falha"
-      },
-      {
-        "name": "Tríceps Corda",
-        "category": "Tríceps",
-        "suggested_sets": 3,
-        "suggested_reps": 10,
-        "technique": "drop_set"
-      }
-    ]
-  }
-]
+{
+  "routine_name": "Nome da Rotina (ex: Hipertrofia Fase 1)",
+  "suggested_duration_weeks": 4,
+  "workouts": [
+    {
+      "name": "Treino A",
+      "exercises": [
+        {
+          "name": "Supino Reto",
+          "category": "Peito",
+          "suggested_sets": 4,
+          "suggested_reps": 10,
+          "notes": "Focar na cadência 3-1-1",
+          "video_url": "link se houver"
+        }
+      ]
+    }
+  ]
+}
 
 $profileContext
 
@@ -127,21 +105,11 @@ $historyJson
 ''';
   }
 
-  static List<Workout> parseAiResponse(String response) {
+  static Map<String, dynamic> parseAiResponse(String response) {
     try {
-      // Extrai JSON se a IA tiver colocado em blocos de markdown
-      final jsonMatch = RegExp(r'\[.*\]|\{.*\}', dotAll: true).firstMatch(response);
+      final jsonMatch = RegExp(r'\{.*\}', dotAll: true).firstMatch(response);
       final jsonString = jsonMatch?.group(0) ?? response;
-      
-      final dynamic decoded = jsonDecode(jsonString);
-      
-      if (decoded is List) {
-        return decoded.map((data) => Workout.fromJson(data)).toList();
-      } else if (decoded is Map<String, dynamic>) {
-        return [Workout.fromJson(decoded)];
-      }
-      
-      throw Exception('Formato JSON não reconhecido.');
+      return jsonDecode(jsonString);
     } catch (e) {
       throw Exception('Formato de resposta inválido. Certifique-se de copiar o JSON corretamente.');
     }

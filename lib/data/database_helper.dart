@@ -24,7 +24,7 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 9, // Aumentei a versão para 9
+      version: 10, // Aumentei a versão para 10
       onCreate: _createDB,
       onUpgrade: _upgradeDB,
     );
@@ -75,6 +75,9 @@ class DatabaseHelper {
       await db.execute('ALTER TABLE exercises ADD COLUMN technique TEXT');
       await db.execute('ALTER TABLE exercise_sets ADD COLUMN technique TEXT');
     }
+    if (oldVersion < 10) {
+      await db.execute('ALTER TABLE routines ADD COLUMN suggested_duration_weeks INTEGER');
+    }
   }
 
   Future _createDB(Database db, int version) async {
@@ -104,7 +107,8 @@ class DatabaseHelper {
         id $idType,
         name $textType,
         created_at $textType,
-        is_active INTEGER DEFAULT 1
+        is_active INTEGER DEFAULT 1,
+        suggested_duration_weeks INTEGER
       )
     ''');
 
@@ -174,13 +178,21 @@ class DatabaseHelper {
   }
 
   // --- Routine Operations ---
-  Future<int> createRoutine(String name) async {
+  Future<int> createRoutine(String name, {int? durationWeeks}) async {
     final db = await instance.database;
     return await db.insert('routines', {
       'name': name,
       'created_at': DateTime.now().toIso8601String(),
-      'is_active': 1
+      'is_active': 1,
+      'suggested_duration_weeks': durationWeeks,
     });
+  }
+
+  Future<Routine?> getActiveRoutine() async {
+    final db = await instance.database;
+    final result = await db.query('routines', where: 'is_active = 1', limit: 1);
+    if (result.isEmpty) return null;
+    return Routine.fromJson(result.first);
   }
 
   Future<void> archiveCurrentRoutine() async {
@@ -190,19 +202,18 @@ class DatabaseHelper {
       await txn.update('workouts', {'is_active': 0}, where: 'is_active = 1');
     });
   }
+Future<void> activateRoutine(int routineId) async {
+  final db = await instance.database;
+  await db.transaction((txn) async {
+    // Arquivar o que estiver ativo primeiro
+    await txn.update('routines', {'is_active': 0}, where: 'is_active = 1');
+    await txn.update('workouts', {'is_active': 0}, where: 'is_active = 1');
 
-  Future<void> activateRoutine(int routineId) async {
-    final db = await instance.database;
-    await db.transaction((txn) async {
-      // Arquivar o que estiver ativo primeiro
-      await txn.update('routines', {'is_active': 0}, where: 'is_active = 1');
-      await txn.update('workouts', {'is_active': 0}, where: 'is_active = 1');
-      
-      // Ativar a nova
-      await txn.update('routines', {'is_active': 1}, where: 'id = ?', whereArgs: [routineId]);
-      await txn.update('workouts', {'is_active': 1}, where: 'routine_id = ?', whereArgs: [routineId]);
-    });
-  }
+    // Ativar a nova
+    await txn.update('routines', {'is_active': 1}, where: 'id = ?', whereArgs: [routineId]);
+    await txn.update('workouts', {'is_active': 1}, where: 'routine_id = ?', whereArgs: [routineId]);
+  });
+}
 
   Future<List<Routine>> getArchivedRoutines() async {
     final db = await instance.database;
@@ -237,6 +248,7 @@ class DatabaseHelper {
         name: row['name'] as String,
         createdAt: DateTime.parse(row['created_at'] as String),
         isActive: false,
+        suggestedDurationWeeks: row['suggested_duration_weeks'] as int?,
         workouts: workouts,
       ));
     }
@@ -443,6 +455,16 @@ class DatabaseHelper {
       ORDER BY ws.date DESC, es.id ASC
     ''', [exerciseId]);
     return result;
+  }
+
+  Future<int> getSessionsCountForRoutine(int routineId) async {
+    final db = await instance.database;
+    final workouts = await db.query('workouts', where: 'routine_id = ?', whereArgs: [routineId]);
+    if (workouts.isEmpty) return 0;
+    
+    final workoutIds = workouts.map((w) => w['id']).join(',');
+    final result = await db.rawQuery('SELECT COUNT(*) as count FROM workout_sessions WHERE workout_id IN ($workoutIds)');
+    return result.first['count'] as int? ?? 0;
   }
 
   Future close() async {

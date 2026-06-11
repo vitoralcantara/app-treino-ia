@@ -5,85 +5,77 @@ import 'package:app_treino_academia/services/ai_prompt_helper.dart';
 
 void main() {
   group('AiPromptHelper Tests', () {
-    test('parseAiResponse should handle a single workout object', () {
+    test('parseAiResponse should handle a structured routine object', () {
       const jsonResponse = '''
       {
-        "name": "Treino A",
-        "exercises": [
-          {"name": "Supino", "category": "Peito"}
+        "routine_name": "Fase 1",
+        "suggested_duration_weeks": 4,
+        "workouts": [
+          {
+            "name": "Treino A",
+            "exercises": [
+              {"name": "Supino", "category": "Peito"}
+            ]
+          }
         ]
       }
       ''';
 
-      final workouts = AiPromptHelper.parseAiResponse(jsonResponse);
+      final data = AiPromptHelper.parseAiResponse(jsonResponse);
       
-      expect(workouts.length, 1);
-      expect(workouts[0].name, 'Treino A');
-      expect(workouts[0].exercises.length, 1);
-      expect(workouts[0].exercises[0].name, 'Supino');
-    });
-
-    test('parseAiResponse should handle a list of workout objects (ABC Routine)', () {
-      const jsonResponse = '''
-      [
-        {
-          "name": "Treino A",
-          "exercises": [{"name": "Supino", "category": "Peito"}]
-        },
-        {
-          "name": "Treino B",
-          "exercises": [{"name": "Agachamento", "category": "Pernas"}]
-        }
-      ]
-      ''';
-
-      final workouts = AiPromptHelper.parseAiResponse(jsonResponse);
+      expect(data['routine_name'], 'Fase 1');
+      expect(data['suggested_duration_weeks'], 4);
+      expect((data['workouts'] as List).length, 1);
       
-      expect(workouts.length, 2);
-      expect(workouts[0].name, 'Treino A');
-      expect(workouts[1].name, 'Treino B');
-      expect(workouts[1].exercises[0].name, 'Agachamento');
+      final workoutsJson = data['workouts'] as List;
+      final workout = Workout.fromJson(workoutsJson[0] as Map<String, dynamic>);
+      expect(workout.name, 'Treino A');
     });
 
     test('parseAiResponse should handle markdown code blocks', () {
       const jsonResponse = '''
       Aqui está o seu treino:
       ```json
-      [
-        {
-          "name": "Treino A",
-          "exercises": [{"name": "Supino", "category": "Peito"}]
-        }
-      ]
+      {
+        "routine_name": "Fase 1",
+        "workouts": []
+      }
       ```
       Espero que goste!
       ''';
 
-      final workouts = AiPromptHelper.parseAiResponse(jsonResponse);
-      
-      expect(workouts.length, 1);
-      expect(workouts[0].name, 'Treino A');
+      final data = AiPromptHelper.parseAiResponse(jsonResponse);
+      expect(data['routine_name'], 'Fase 1');
     });
 
     test('parseAiResponse should throw exception on invalid JSON', () {
       const invalidResponse = 'Isso não é um JSON';
-      
       expect(() => AiPromptHelper.parseAiResponse(invalidResponse), throwsException);
     });
   });
 
   group('Model JSON Tests', () {
-    test('Exercise.fromJson should handle image_url from snake_case', () {
+    test('Exercise.fromJson should handle all new fields', () {
       final json = {
         'id': 1,
         'name': 'Supino',
         'category': 'Peito',
-        'image_url': 'https://example.com/image.png'
+        'image_url': 'https://example.com/image.png',
+        'suggested_sets': 4,
+        'suggested_reps': 10,
+        'notes': 'Cadência lenta',
+        'group_id': 'super1',
+        'technique': 'drop_set'
       };
 
       final exercise = Exercise.fromJson(json);
       
       expect(exercise.imageUrl, 'https://example.com/image.png');
+      expect(exercise.suggestedSets, 4);
+      expect(exercise.suggestedReps, 10);
+      expect(exercise.workoutSpecificNotes, 'Cadência lenta');
+      expect(exercise.groupId, 'super1');
+      expect(exercise.suggestedTechnique, 'drop_set');
     });
 
     test('Workout.toJson should include all exercises', () {

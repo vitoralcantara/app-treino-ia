@@ -36,6 +36,19 @@ class WorkoutListNotifier extends Notifier<List<Workout>> {
     return await db.getArchivedRoutines();
   }
 
+  Future<Map<String, dynamic>> getRoutineProgress() async {
+    final db = ref.read(databaseProvider);
+    final active = await db.getActiveRoutine();
+    if (active == null) return {};
+
+    final sessionCount = await db.getSessionsCountForRoutine(active.id!);
+    return {
+      'routine': active,
+      'sessions': sessionCount,
+      'suggested_weeks': active.suggestedDurationWeeks,
+    };
+  }
+
   Future<void> addWorkout(Workout workout) async {
     final db = ref.read(databaseProvider);
     await db.createWorkout(workout);
@@ -127,3 +140,9 @@ class SessionListNotifier extends Notifier<List<WorkoutSession>> {
 }
 
 final sessionListProvider = NotifierProvider<SessionListNotifier, List<WorkoutSession>>(SessionListNotifier.new);
+
+final routineProgressProvider = FutureProvider<Map<String, dynamic>>((ref) async {
+  // Observar mudanças no histórico para atualizar o progresso automaticamente
+  ref.watch(sessionListProvider);
+  return await ref.read(workoutListProvider.notifier).getRoutineProgress();
+});

@@ -45,17 +45,22 @@ class _AiScreenState extends ConsumerState<AiScreen> {
     if (_responseController.text.isEmpty) return;
 
     try {
-      final workouts = AiPromptHelper.parseAiResponse(_responseController.text);
+      final Map<String, dynamic> data = AiPromptHelper.parseAiResponse(_responseController.text);
       
-      // 1. Arquivar a rotina atual (o grupo inteiro)
+      final routineName = data['routine_name'] ?? 'Rotina IA - ${_formatDate(DateTime.now())}';
+      final durationWeeks = data['suggested_duration_weeks'] as int?;
+      final List<dynamic> workoutsJson = data['workouts'] ?? [];
+
+      // 1. Arquivar a rotina atual
       await ref.read(workoutListProvider.notifier).archiveCurrentRoutine();
       
-      // 2. Criar uma nova rotina no banco
+      // 2. Criar a nova rotina no banco
       final db = ref.read(databaseProvider);
-      final newRoutineId = await db.createRoutine('Rotina IA - ${_formatDate(DateTime.now())}');
+      final newRoutineId = await db.createRoutine(routineName, durationWeeks: durationWeeks);
       
-      // 3. Adicionar os novos treinos vinculados a essa rotina
-      for (var workout in workouts) {
+      // 3. Adicionar os treinos
+      for (var workoutJson in workoutsJson) {
+        final workout = Workout.fromJson(workoutJson);
         final workoutWithRoutine = Workout(
           name: workout.name,
           exercises: workout.exercises,
@@ -73,12 +78,8 @@ class _AiScreenState extends ConsumerState<AiScreen> {
 
       if (!mounted) return;
 
-      final message = workouts.length > 1 
-          ? '${workouts.length} treinos importados com sucesso!' 
-          : 'Treino "${workouts[0].name}" importado com sucesso!';
-
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(message)),
+        SnackBar(content: Text('Rotina "$routineName" importada com sucesso!')),
       );
     } catch (e) {
       if (!mounted) return;

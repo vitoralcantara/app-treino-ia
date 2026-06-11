@@ -5,6 +5,7 @@ class Routine {
   final String name;
   final DateTime createdAt;
   final bool isActive;
+  final int? suggestedDurationWeeks; // Novo: Duração sugerida em semanas
   final List<Workout> workouts;
 
   Routine({
@@ -12,6 +13,7 @@ class Routine {
     required this.name,
     required this.createdAt,
     this.isActive = true,
+    this.suggestedDurationWeeks,
     this.workouts = const [],
   });
 
@@ -21,7 +23,8 @@ class Routine {
       name: json['name'] as String,
       createdAt: DateTime.parse(json['created_at'] as String),
       isActive: (json['is_active'] ?? 1) == 1,
-      workouts: [], // Preenchido manualmente no database_helper
+      suggestedDurationWeeks: json['suggested_duration_weeks'] as int?,
+      workouts: [],
     );
   }
 
@@ -31,6 +34,7 @@ class Routine {
       'name': name,
       'created_at': createdAt.toIso8601String(),
       'is_active': isActive ? 1 : 0,
+      if (suggestedDurationWeeks != null) 'suggested_duration_weeks': suggestedDurationWeeks,
     };
   }
 }
