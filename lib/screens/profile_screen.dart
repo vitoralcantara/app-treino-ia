@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:intl/intl.dart';
 import '../models/user_profile.dart';
 import '../providers/profile_provider.dart';
 import '../providers/workout_provider.dart';
 import '../providers/settings_provider.dart';
+import '../providers/backup_provider.dart';
 import '../services/backup_service.dart';
 import 'archived_workouts_screen.dart';
 
@@ -133,8 +135,47 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     );
   }
 
+  void _showCloudRestoreConfirmation(BuildContext context, WidgetRef ref) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Restaurar da Nuvem?'),
+        content: const Text(
+          'Atenção: A restauração do Google Drive irá substituir todos os seus dados locais pelos dados salvos na nuvem.',
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              final success = await ref.read(backupProvider.notifier).restoreBackup();
+              if (success && context.mounted) {
+                ref.invalidate(workoutListProvider);
+                ref.invalidate(sessionListProvider);
+                ref.invalidate(exerciseListProvider);
+                ref.invalidate(routineProgressProvider);
+                
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Backup restaurado com sucesso do Google Drive!')),
+                );
+              } else if (context.mounted) {
+                final error = ref.read(backupProvider).errorMessage ?? 'Erro desconhecido';
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text(error), backgroundColor: Colors.red),
+                );
+              }
+            },
+            child: const Text('Confirmar e Restaurar', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final backupState = ref.watch(backupProvider);
+
     return Padding(
       padding: const EdgeInsets.all(16.0),
       child: SingleChildScrollView(
@@ -160,7 +201,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             const SizedBox(height: 10),
             DropdownButtonFormField<String>(
               decoration: const InputDecoration(labelText: 'Gênero', border: OutlineInputBorder()),
-              initialValue: _selectedGender,
+              value: _selectedGender,
               items: _genderOptions.map((String value) {
                 return DropdownMenuItem<String>(
                   value: value,
@@ -176,7 +217,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             const SizedBox(height: 10),
             DropdownButtonFormField<String>(
               decoration: const InputDecoration(labelText: 'Nível de Experiência', border: OutlineInputBorder()),
-              initialValue: _selectedExperience,
+              value: _selectedExperience,
               items: _experienceOptions.map((String value) {
                 return DropdownMenuItem<String>(
                   value: value,
@@ -192,7 +233,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             const SizedBox(height: 10),
             DropdownButtonFormField<String>(
               decoration: const InputDecoration(labelText: 'Objetivo Principal', border: OutlineInputBorder()),
-              initialValue: _selectedGoal,
+              value: _selectedGoal,
               items: _goalOptions.map((String value) {
                 return DropdownMenuItem<String>(
                   value: value,
@@ -245,6 +286,89 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
             const SizedBox(height: 30),
             const Text(
+              'Backup em Nuvem (Google Drive)',
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 10),
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(12.0),
+                child: Column(
+                  children: [
+                    if (backupState.userEmail == null)
+                      ElevatedButton.icon(
+                        icon: const Icon(Icons.login),
+                        label: const Text('Conectar com Google'),
+                        onPressed: backupState.isConnecting 
+                          ? null 
+                          : () => ref.read(backupProvider.notifier).signIn(),
+                        style: ElevatedButton.styleFrom(
+                          minimumSize: const Size.fromHeight(45),
+                          backgroundColor: Colors.white,
+                          foregroundColor: Colors.black87,
+                        ),
+                      )
+                    else
+                      Column(
+                        children: [
+                          ListTile(
+                            contentPadding: EdgeInsets.zero,
+                            leading: const CircleAvatar(child: Icon(Icons.person)),
+                            title: Text(backupState.userEmail!),
+                            subtitle: Text(
+                              backupState.lastBackupDate == null
+                                ? 'Nenhum backup encontrado'
+                                : 'Último backup: ${DateFormat('dd/MM/yyyy HH:mm').format(backupState.lastBackupDate!)}'
+                            ),
+                            trailing: IconButton(
+                              icon: const Icon(Icons.logout),
+                              onPressed: () => ref.read(backupProvider.notifier).signOut(),
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: OutlinedButton.icon(
+                                  icon: backupState.isUploading 
+                                    ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+                                    : const Icon(Icons.cloud_upload),
+                                  label: const Text('Fazer Backup'),
+                                  onPressed: backupState.isUploading 
+                                    ? null 
+                                    : () async {
+                                        final success = await ref.read(backupProvider.notifier).uploadBackup();
+                                        if (success && context.mounted) {
+                                          ScaffoldMessenger.of(context).showSnackBar(
+                                            const SnackBar(content: Text('Backup enviado com sucesso!')),
+                                          );
+                                        }
+                                      },
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: OutlinedButton.icon(
+                                  icon: backupState.isDownloading 
+                                    ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+                                    : const Icon(Icons.cloud_download),
+                                  label: const Text('Restaurar'),
+                                  onPressed: backupState.isDownloading 
+                                    ? null 
+                                    : () => _showCloudRestoreConfirmation(context, ref),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                  ],
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 30),
+            const Text(
               'Configurações e Histórico',
               style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
             ),
@@ -266,7 +390,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
             const SizedBox(height: 20),
             const Text(
-              'Gerenciamento de Dados',
+              'Gerenciamento de Arquivos Locais',
               style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 10),
@@ -275,13 +399,13 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 children: [
                   ListTile(
                     leading: const Icon(Icons.download, color: Colors.blue),
-                    title: const Text('Exportar Backup'),
-                    subtitle: const Text('Salvar todos os treinos e histórico'),
+                    title: const Text('Exportar Backup JSON'),
+                    subtitle: const Text('Salvar em arquivo manual'),
                     onTap: () async {
                       await BackupService().exportBackup();
                       if (context.mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Backup gerado com sucesso!')),
+                          const SnackBar(content: Text('Backup JSON gerado com sucesso!')),
                         );
                       }
                     },
@@ -289,8 +413,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   const Divider(height: 1),
                   ListTile(
                     leading: const Icon(Icons.upload, color: Colors.green),
-                    title: const Text('Importar Backup'),
-                    subtitle: const Text('Restaurar dados de um arquivo JSON'),
+                    title: const Text('Importar Backup JSON'),
+                    subtitle: const Text('Restaurar de um arquivo JSON'),
                     onTap: () => _showImportConfirmation(context, ref),
                   ),
                 ],
@@ -360,6 +484,117 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       ),
     );
   }
+
+  void _showAboutDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Sobre o Treino IA', textAlign: TextAlign.center),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 80,
+                height: 80,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  image: const DecorationImage(
+                    image: AssetImage('logo-ia.png'),
+                    fit: BoxFit.cover,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.purple.withValues(alpha: 0.3),
+                      blurRadius: 10,
+                      spreadRadius: 2,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'Versão 1.0.0',
+                style: TextStyle(color: Colors.grey, fontSize: 12),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'O Treino IA é um projeto independente de código aberto. Seu objetivo é democratizar o acesso a treinos estruturados usando o poder da Inteligência Artificial.',
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 24),
+              const Divider(),
+              const SizedBox(height: 16),
+              const Text(
+                'Apoie o Projeto! ☕',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Este app é gratuito e sem anúncios. Se ele te ajudou a evoluir nos treinos, considere fazer uma doação de qualquer valor para ajudar a manter o projeto vivo e receber novas atualizações.',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 12),
+              ),
+              const SizedBox(height: 20),
+              Container(
+                width: 150,
+                height: 150,
+                decoration: BoxDecoration(
+                  border: Border.all(color: Colors.grey.withValues(alpha: 0.3)),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: Image.asset(
+                    'qr-code.png',
+                    fit: BoxFit.contain,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'PIX Copia e Cola',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8),
+              OutlinedButton.icon(
+                onPressed: () {
+                  const myPixKey = '0002012636br.gov.bcb.pix0114+55119999999995204000053039865802BR5905BRL60040.006209SAO PAULO6304123463041A2B'; 
+                  
+                  Clipboard.setData(const ClipboardData(text: myPixKey));
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Chave PIX copiada! Obrigado pelo apoio ❤️'),
+                      backgroundColor: Colors.green,
+                    ),
+                  );
+                },
+                icon: const Icon(Icons.copy),
+                label: const Text('Copiar Chave PIX'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: Colors.greenAccent,
+                  side: const BorderSide(color: Colors.greenAccent),
+                ),
+              ),
+              const SizedBox(height: 10),
+              const Text(
+                '*Substitua a chave no código pelo seu PIX real.',
+                style: TextStyle(fontSize: 10, color: Colors.grey, fontStyle: FontStyle.italic),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Fechar'),
+          ),
+        ],
+      ),
+    );
+  }
+}
 
   void _showAboutDialog(BuildContext context) {
     showDialog(

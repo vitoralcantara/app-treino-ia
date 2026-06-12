@@ -500,6 +500,27 @@ class DatabaseHelper {
     return result.first['count'] as int? ?? 0;
   }
 
+  // --- Backup & Restore Physical File ---
+  Future<String> getDatabasePath() async {
+    final dbPath = await getDatabasesPath();
+    return join(dbPath, 'workout_app.db');
+  }
+
+  Future<void> closeDatabase() async {
+    if (_database != null) {
+      await _database!.close();
+      _database = null;
+    }
+  }
+
+  Future<void> overwriteDatabase(String newPath) async {
+    await closeDatabase();
+    final dbPath = await getDatabasePath();
+    final newFile = File(newPath);
+    await newFile.copy(dbPath);
+    // O banco será reaberto automaticamente na próxima chamada a 'database'
+  }
+
   Future<void> restoreFromBackup(Map<String, dynamic> backupData) async {
     final db = await instance.database;
     

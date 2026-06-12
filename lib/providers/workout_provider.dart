@@ -4,6 +4,7 @@ import '../models/workout.dart';
 import '../models/exercise.dart';
 import '../models/workout_session.dart';
 import '../models/routine.dart';
+import 'backup_provider.dart';
 
 final databaseProvider = Provider((ref) => DatabaseHelper.instance);
 
@@ -19,16 +20,23 @@ class WorkoutListNotifier extends Notifier<List<Workout>> {
     state = await db.getAllWorkouts(activeOnly: true);
   }
 
+  void _triggerCloudBackup() {
+    // Tenta fazer backup de forma silenciosa
+    ref.read(backupProvider.notifier).uploadBackup();
+  }
+
   Future<void> archiveCurrentRoutine() async {
     final db = ref.read(databaseProvider);
     await db.archiveCurrentRoutine();
     await _load();
+    _triggerCloudBackup();
   }
 
   Future<void> activateRoutine(int routineId) async {
     final db = ref.read(databaseProvider);
     await db.activateRoutine(routineId);
     await _load();
+    _triggerCloudBackup();
   }
 
   Future<void> updateRoutineFrequency(int routineId, String? type, String? value) async {
@@ -36,6 +44,7 @@ class WorkoutListNotifier extends Notifier<List<Workout>> {
     await db.updateRoutineFrequency(routineId, type, value);
     ref.invalidate(routineProgressProvider); // Força atualização da UI que depende do progresso da rotina
     await _load();
+    _triggerCloudBackup();
   }
 
   Future<List<Routine>> getArchivedRoutines() async {
@@ -60,30 +69,35 @@ class WorkoutListNotifier extends Notifier<List<Workout>> {
     final db = ref.read(databaseProvider);
     await db.createWorkout(workout);
     await _load();
+    _triggerCloudBackup();
   }
 
   Future<void> deleteWorkout(int id) async {
     final db = ref.read(databaseProvider);
     await db.deleteWorkout(id);
     await _load();
+    _triggerCloudBackup();
   }
 
   Future<void> addExerciseToWorkout(int workoutId, int exerciseId) async {
     final db = ref.read(databaseProvider);
     await db.addExerciseToWorkout(workoutId, exerciseId);
     await _load();
+    _triggerCloudBackup();
   }
 
   Future<void> updateExerciseNotesInWorkout(int workoutId, int exerciseId, String notes) async {
     final db = ref.read(databaseProvider);
     await db.updateExerciseNotesInWorkout(workoutId, exerciseId, notes);
     await _load();
+    _triggerCloudBackup();
   }
 
   Future<void> removeExerciseFromWorkout(int workoutId, int exerciseId) async {
     final db = ref.read(databaseProvider);
     await db.removeExerciseFromWorkout(workoutId, exerciseId);
     await _load();
+    _triggerCloudBackup();
   }
 }
 
@@ -106,28 +120,36 @@ class ExerciseListNotifier extends Notifier<AsyncValue<List<Exercise>>> {
     }
   }
 
+  void _triggerCloudBackup() {
+    ref.read(backupProvider.notifier).uploadBackup();
+  }
+
   Future<void> addExercise(Exercise exercise) async {
     final db = ref.read(databaseProvider);
     await db.createExercise(exercise);
     await _load();
+    _triggerCloudBackup();
   }
 
   Future<void> updateExercise(Exercise exercise) async {
     final db = ref.read(databaseProvider);
     await db.updateExercise(exercise);
     await _load();
+    _triggerCloudBackup();
   }
 
   Future<void> toggleExerciseAvailability(int id, bool isAvailable) async {
     final db = ref.read(databaseProvider);
     await db.toggleExerciseAvailability(id, isAvailable);
     await _load();
+    _triggerCloudBackup();
   }
 
   Future<void> deleteExercise(int id) async {
     final db = ref.read(databaseProvider);
     await db.deleteExercise(id);
     await _load();
+    _triggerCloudBackup();
   }
 }
 
@@ -145,10 +167,15 @@ class SessionListNotifier extends Notifier<List<WorkoutSession>> {
     state = await db.getAllSessions();
   }
 
+  void _triggerCloudBackup() {
+    ref.read(backupProvider.notifier).uploadBackup();
+  }
+
   Future<void> addSession(WorkoutSession session) async {
     final db = ref.read(databaseProvider);
     await db.createWorkoutSession(session);
     await _load();
+    _triggerCloudBackup();
   }
 }
 

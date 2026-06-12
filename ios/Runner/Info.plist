@@ -49,5 +49,18 @@
 	<string>Precisamos de acesso a sua galeria para você adicionar fotos aos exercícios.</string>
 	<key>NSCameraUsageDescription</key>
 	<string>Precisamos de acesso a sua câmera para você tirar fotos para os exercícios.</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>com.googleusercontent.apps.437382817749-5amoaf55rsvpj9p7el0lkd28vm7dtsn2</string>
+			</array>
+		</dict>
+	</array>
+	<key>GIDClientID</key>
+	<string>437382817749-5amoaf55rsvpj9p7el0lkd28vm7dtsn2.apps.googleusercontent.com</string>
 </dict>
 </plist>
