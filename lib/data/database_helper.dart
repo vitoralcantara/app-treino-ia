@@ -197,17 +197,18 @@ class DatabaseHelper {
   }
 
   // --- Routine Operations ---
-  Future<int> createRoutine(String name, {int? durationWeeks, String? frequencyType, String? frequencyValue}) async {
+  Future<int> createRoutine(String name, {int? durationWeeks, String? frequencyType, String? frequencyValue, int isActive = 1}) async {
     final db = await instance.database;
     return await db.insert('routines', {
       'name': name,
       'created_at': DateTime.now().toIso8601String(),
-      'is_active': 1,
+      'is_active': isActive,
       'suggested_duration_weeks': durationWeeks,
       'frequency_type': frequencyType,
       'frequency_value': frequencyValue,
     });
   }
+
 
   Future<void> updateRoutineFrequency(int routineId, String? type, String? value) async {
     final db = await instance.database;

@@ -298,12 +298,44 @@ Formato Exato:
       final durationWeeks = data['suggested_duration_weeks'] as int?;
       final List<dynamic> workoutsJson = data['workouts'] ?? [];
 
-      // 1. Arquivar a rotina atual
-      await ref.read(workoutListProvider.notifier).archiveCurrentRoutine();
+      if (!mounted) return;
+
+      // Mostrar diálogo de escolha
+      final choice = await showDialog<String>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Nova Rotina Gerada'),
+          content: Text('Deseja substituir sua rotina atual pela "$routineName" ou apenas adicioná-la à sua lista?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, 'add'),
+              child: const Text('Apenas Adicionar'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(context, 'replace'),
+              child: const Text('Substituir Atual'),
+            ),
+          ],
+        ),
+      );
+
+      if (choice == null) return;
+
+      final bool shouldReplace = choice == 'replace';
+
+      // 1. Se for substituir, arquivar a rotina atual
+      if (shouldReplace) {
+        await ref.read(workoutListProvider.notifier).archiveCurrentRoutine();
+      }
       
       // 2. Criar a nova rotina no banco
       final db = ref.read(databaseProvider);
-      final newRoutineId = await db.createRoutine(routineName, durationWeeks: durationWeeks);
+      final newRoutineId = await db.createRoutine(
+        routineName, 
+        durationWeeks: durationWeeks,
+        // Se não for substituir, a nova rotina entra como inativa (0)
+        isActive: shouldReplace ? 1 : 0, 
+      );
       
       // 3. Adicionar os treinos
       for (var workoutJson in workoutsJson) {
@@ -312,7 +344,7 @@ Formato Exato:
           name: workout.name,
           exercises: workout.exercises,
           routineId: newRoutineId,
-          isActive: true,
+          isActive: shouldReplace, // Segue o estado da rotina
         );
         await ref.read(workoutListProvider.notifier).addWorkout(workoutWithRoutine);
       }
@@ -326,7 +358,11 @@ Formato Exato:
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Rotina "$routineName" importada com sucesso!')),
+        SnackBar(
+          content: Text(shouldReplace 
+            ? 'Rotina "$routineName" ativada com sucesso!' 
+            : 'Rotina "$routineName" adicionada à sua lista!'),
+        ),
       );
     } catch (e) {
       if (!mounted) return;
