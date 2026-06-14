@@ -226,7 +226,7 @@ class _WorkoutExecutionScreenState extends ConsumerState<WorkoutExecutionScreen>
       _setsByExercise[exerciseId]!.add(
         ExerciseSet(
           reps: lastSet.reps,
-          weight: lastSet.weight,
+          weight: 0, // Nova série começa sem peso
           exerciseId: exerciseId,
           technique: lastSet.technique,
         ),
@@ -799,17 +799,18 @@ class _WorkoutExecutionScreenState extends ConsumerState<WorkoutExecutionScreen>
                                               const SizedBox(width: 8),
                                               Expanded(
                                                 child: TextFormField(
-                                                  initialValue: set.weight.toString(),
+                                                  initialValue: set.weight == 0 ? '' : set.weight.toString(),
                                                   keyboardType: TextInputType.number,
-                                                  decoration: const InputDecoration(
+                                                  decoration: InputDecoration(
                                                     labelText: 'Peso (kg)',
+                                                    hintText: '00',
                                                     isDense: true,
-                                                    border: OutlineInputBorder(),
+                                                    border: const OutlineInputBorder(),
                                                   ),
                                                   onChanged: (val) {
                                                     sets[setIndex] = ExerciseSet(
                                                       reps: sets[setIndex].reps,
-                                                      weight: double.tryParse(val) ?? 0,
+                                                      weight: val.isEmpty ? 0 : double.tryParse(val) ?? 0,
                                                       exerciseId: exercise.id,
                                                       technique: sets[setIndex].technique,
                                                     );
