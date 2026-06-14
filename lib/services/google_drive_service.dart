@@ -101,11 +101,6 @@ class GoogleDriveService {
       if (fileList.files == null || fileList.files!.isEmpty) return false;
 
       final fileId = fileList.files!.first.id!;
-      final drive.Media response = await driveApi.files.get(
-        fileId,
-        downloadOptions: drive.DownloadOptions.metadata,
-      ) as drive.Media; // Erro comum: precisa de cast ou usar o stream corretamente
-
       // Versão segura de download
       final responseStream = await driveApi.files.get(fileId, downloadOptions: drive.DownloadOptions.fullMedia) as drive.Media;
       
@@ -137,7 +132,6 @@ class GoogleDriveService {
       final fileList = await driveApi.files.list(
         spaces: 'appDataFolder',
         q: "name = 'workout_app.db'",
-        fields: 'files(id, name, modifiedTime)',
       );
 
       if (fileList.files == null || fileList.files!.isEmpty) return null;

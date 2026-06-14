@@ -37,11 +37,13 @@ class BackupState {
   }
 }
 
-class BackupNotifier extends StateNotifier<BackupState> {
+class BackupNotifier extends Notifier<BackupState> {
   final GoogleDriveService _driveService = GoogleDriveService();
 
-  BackupNotifier() : super(BackupState()) {
+  @override
+  BackupState build() {
     _init();
+    return BackupState();
   }
 
   Future<void> _init() async {
@@ -112,6 +114,4 @@ class BackupNotifier extends StateNotifier<BackupState> {
   }
 }
 
-final backupProvider = StateNotifierProvider<BackupNotifier, BackupState>((ref) {
-  return BackupNotifier();
-});
+final backupProvider = NotifierProvider<BackupNotifier, BackupState>(BackupNotifier.new);

@@ -66,15 +66,14 @@ class _AiScreenContentState extends ConsumerState<AiScreenContent> {
 
   Future<void> _pickDocuments() async {
     try {
-      final result = await FilePicker.platform.pickFiles(
+      final result = await FilePicker.pickFiles(
         type: FileType.custom,
         allowedExtensions: ['pdf', 'docx', 'xlsx', 'xls', 'txt'],
-        allowMultiple: true,
       );
 
       if (result != null) {
         setState(() {
-          _selectedFiles.addAll(result.paths.where((path) => path != null).map((path) => File(path!)));
+          _selectedFiles.addAll(result.files.where((file) => file.path != null).map((file) => File(file.path!)));
         });
       }
     } catch (e) {
@@ -269,15 +268,15 @@ Formato Exato:
 
   Future<void> _importFromFile() async {
     try {
-      final result = await FilePicker.platform.pickFiles(
+      final file = await FilePicker.pickFile(
         type: FileType.custom,
         allowedExtensions: ['json', 'txt'],
       );
 
-      if (result == null || result.files.single.path == null) return;
+      if (file == null || file.path == null) return;
 
-      final file = File(result.files.single.path!);
-      final content = await file.readAsString();
+      final pickedFile = File(file.path!);
+      final content = await pickedFile.readAsString();
       await _processJsonImport(content);
     } catch (e) {
       if (mounted) {

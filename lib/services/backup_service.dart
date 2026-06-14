@@ -48,15 +48,15 @@ class BackupService {
 
   Future<String?> importBackup() async {
     try {
-      final result = await FilePicker.platform.pickFiles(
+      final file = await FilePicker.pickFile(
         type: FileType.custom,
         allowedExtensions: ['json'],
       );
 
-      if (result == null || result.files.single.path == null) return null;
+      if (file == null || file.path == null) return null;
 
-      final file = File(result.files.single.path!);
-      final jsonString = await file.readAsString();
+      final pickedFile = File(file.path!);
+      final jsonString = await pickedFile.readAsString();
       final Map<String, dynamic> backupData = jsonDecode(jsonString);
 
       // Validação básica de formato
