@@ -10,6 +10,7 @@ import '../models/exercise_set.dart';
 import '../models/exercise.dart';
 import '../providers/workout_provider.dart';
 import '../services/notification_service.dart';
+import '../data/database_helper.dart';
 
 class WorkoutExecutionScreen extends ConsumerStatefulWidget {
   final Workout workout;
@@ -164,8 +165,9 @@ class _WorkoutExecutionScreenState extends ConsumerState<WorkoutExecutionScreen>
     }
   }
 
-  void _loadLastSessionData() {
+  void _loadLastSessionData() async {
     final sessions = ref.read(sessionListProvider);
+    final db = ref.read(databaseProvider);
     _dynamicExercises.clear();
     _dynamicExercises.addAll(widget.workout.exercises);
 
@@ -183,7 +185,7 @@ class _WorkoutExecutionScreenState extends ConsumerState<WorkoutExecutionScreen>
       for (var exercise in _dynamicExercises) {
         // Buscar séries desta última sessão para este exercício
         final previousSets = lastSession.sets.where((s) => s.exerciseId == exercise.id).toList();
-        
+
         if (previousSets.isNotEmpty) {
           _setsByExercise[exercise.id!] = previousSets.map((s) => ExerciseSet(
             reps: s.reps,
@@ -193,31 +195,47 @@ class _WorkoutExecutionScreenState extends ConsumerState<WorkoutExecutionScreen>
           )).toList();
           _completedSets[exercise.id!] = List.generate(previousSets.length, (_) => false);
         } else {
-          // Usar sugestão da IA se disponível, senão padrão
-          final suggestedSets = exercise.suggestedSets ?? 3;
-          final suggestedReps = exercise.suggestedReps ?? 10;
-          final suggestedList = exercise.suggestedRepsList;
-          
-          _setsByExercise[exercise.id!] = List.generate(
-            suggestedSets, 
-            (i) {
-              int reps = suggestedReps;
-              // Se houver uma lista de reps específica para cada série, usa ela
-              if (suggestedList != null && i < suggestedList.length) {
-                reps = suggestedList[i];
-              }
-              return ExerciseSet(
-                reps: reps, 
-                weight: 0, 
-                exerciseId: exercise.id,
-                technique: exercise.suggestedTechnique,
-              );
-            },
-          );
-          _completedSets[exercise.id!] = List.generate(suggestedSets, (_) => false);
+          // Tentar carregar pesos padrão do exercício (independente do treino)
+          _loadDefaultWeightsForExercise(exercise, db);
         }
       }
     });
+  }
+
+  Future<void> _loadDefaultWeightsForExercise(Exercise exercise, DatabaseHelper db) async {
+    final defaultWeights = await db.getExerciseDefaultWeights(exercise.id!);
+
+    if (defaultWeights.isNotEmpty) {
+      setState(() {
+        _setsByExercise[exercise.id!] = defaultWeights;
+        _completedSets[exercise.id!] = List.generate(defaultWeights.length, (_) => false);
+      });
+    } else {
+      // Usar sugestão da IA se disponível, senão padrão
+      final suggestedSets = exercise.suggestedSets ?? 3;
+      final suggestedReps = exercise.suggestedReps ?? 10;
+      final suggestedList = exercise.suggestedRepsList;
+
+      setState(() {
+        _setsByExercise[exercise.id!] = List.generate(
+          suggestedSets,
+          (i) {
+            int reps = suggestedReps;
+            // Se houver uma lista de reps específica para cada série, usa ela
+            if (suggestedList != null && i < suggestedList.length) {
+              reps = suggestedList[i];
+            }
+            return ExerciseSet(
+              reps: reps,
+              weight: 0,
+              exerciseId: exercise.id,
+              technique: exercise.suggestedTechnique,
+            );
+          },
+        );
+        _completedSets[exercise.id!] = List.generate(suggestedSets, (_) => false);
+      });
+    }
   }
 
   void _addSet(int exerciseId) {
@@ -237,7 +255,7 @@ class _WorkoutExecutionScreenState extends ConsumerState<WorkoutExecutionScreen>
 
   void _finishWorkout() async {
     final List<ExerciseSet> completedSetsList = [];
-    
+
     _setsByExercise.forEach((exerciseId, sets) {
       final completedStatus = _completedSets[exerciseId]!;
       for (int i = 0; i < sets.length; i++) {
@@ -262,7 +280,21 @@ class _WorkoutExecutionScreenState extends ConsumerState<WorkoutExecutionScreen>
     );
 
     await ref.read(sessionListProvider.notifier).addSession(session);
-    
+
+    // Salvar pesos padrão para cada exercício que teve séries concluídas
+    final db = ref.read(databaseProvider);
+    for (var exercise in _dynamicExercises) {
+      final exerciseId = exercise.id!;
+      final sets = _setsByExercise[exerciseId]!;
+      final completedStatus = _completedSets[exerciseId]!;
+
+      // Verificar se houve pelo menos uma série concluída para este exercício
+      final hasCompletedSets = completedStatus.any((completed) => completed);
+      if (hasCompletedSets) {
+        await db.saveExerciseDefaultWeights(exerciseId, sets);
+      }
+    }
+
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Treino concluído e salvo no histórico!')),

@@ -26,7 +26,7 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 12, // Aumentei a versão para 12
+      version: 13, // Aumentei a versão para 13
       onCreate: _createDB,
       onUpgrade: _upgradeDB,
     );
@@ -95,6 +95,21 @@ class DatabaseHelper {
       try {
         await db.execute('ALTER TABLE exercises ADD COLUMN workout_specific_notes TEXT');
       } catch (_) {}
+    }
+    if (oldVersion < 13) {
+      await db.execute('''
+        CREATE TABLE exercise_default_weights (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          exercise_id INTEGER NOT NULL,
+          reps INTEGER NOT NULL,
+          weight REAL NOT NULL,
+          position INTEGER NOT NULL,
+          technique TEXT,
+          updated_at TEXT NOT NULL,
+          FOREIGN KEY (exercise_id) REFERENCES exercises (id) ON DELETE CASCADE
+        )
+      ''');
+      await db.execute('CREATE INDEX idx_exercise_default_weights_exercise_id ON exercise_default_weights(exercise_id)');
     }
   }
 
@@ -586,6 +601,48 @@ class DatabaseHelper {
           });
         }
       }
+    });
+  }
+
+  // Salvar pesos padrão para um exercício
+  Future<void> saveExerciseDefaultWeights(int exerciseId, List<ExerciseSet> sets) async {
+    final db = await instance.database;
+    await db.transaction((txn) async {
+      // Remover pesos antigos deste exercício
+      await txn.delete('exercise_default_weights', where: 'exercise_id = ?', whereArgs: [exerciseId]);
+
+      // Inserir novos pesos
+      for (int i = 0; i < sets.length; i++) {
+        final set = sets[i];
+        await txn.insert('exercise_default_weights', {
+          'exercise_id': exerciseId,
+          'reps': set.reps,
+          'weight': set.weight,
+          'position': i,
+          'technique': set.technique,
+          'updated_at': DateTime.now().toIso8601String(),
+        });
+      }
+    });
+  }
+
+  // Carregar pesos padrão para um exercício
+  Future<List<ExerciseSet>> getExerciseDefaultWeights(int exerciseId) async {
+    final db = await instance.database;
+    final List<Map<String, dynamic>> maps = await db.query(
+      'exercise_default_weights',
+      where: 'exercise_id = ?',
+      whereArgs: [exerciseId],
+      orderBy: 'position',
+    );
+
+    return List.generate(maps.length, (i) {
+      return ExerciseSet(
+        reps: maps[i]['reps'],
+        weight: maps[i]['weight'],
+        exerciseId: exerciseId,
+        technique: maps[i]['technique'],
+      );
     });
   }
 
