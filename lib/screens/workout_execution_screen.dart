@@ -20,7 +20,7 @@ class WorkoutExecutionScreen extends ConsumerStatefulWidget {
   ConsumerState<WorkoutExecutionScreen> createState() => _WorkoutExecutionScreenState();
 }
 
-class _WorkoutExecutionScreenState extends ConsumerState<WorkoutExecutionScreen> {
+class _WorkoutExecutionScreenState extends ConsumerState<WorkoutExecutionScreen> with WidgetsBindingObserver {
   final Map<int, List<ExerciseSet>> _setsByExercise = {};
   final Map<int, List<bool>> _completedSets = {}; // Controla quais séries foram concluídas
   final List<Exercise> _dynamicExercises = []; // Exercícios adicionados na hora
@@ -32,11 +32,39 @@ class _WorkoutExecutionScreenState extends ConsumerState<WorkoutExecutionScreen>
   bool _isTimerRunning = false;
   int _selectedRestTime = 60; // Tempo de descanso padrão: 60s
   static const String _restTimeKey = 'selected_rest_time';
+  DateTime? _timerStartTime; // Timestamp quando o timer foi iniciado
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _loadRestTimePreference();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _timer?.cancel();
+    NotificationService().cancelAllNotifications();
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    if (state == AppLifecycleState.resumed && _isTimerRunning && _timerStartTime != null) {
+      // Recalcular o tempo decorrido enquanto o app estava em segundo plano
+      final elapsedSeconds = DateTime.now().difference(_timerStartTime!).inSeconds;
+      setState(() {
+        _seconds = elapsedSeconds;
+        if (_seconds >= _selectedRestTime) {
+          _pauseTimer();
+        } else {
+          // Reiniciar o timer com o tempo atualizado
+          _startPeriodicTimer();
+        }
+      });
+    }
   }
 
   Future<void> _loadRestTimePreference() async {
@@ -48,22 +76,21 @@ class _WorkoutExecutionScreenState extends ConsumerState<WorkoutExecutionScreen>
     }
   }
 
-  @override
-  void dispose() {
-    _timer?.cancel();
-    NotificationService().cancelAllNotifications();
-    super.dispose();
-  }
-
   void _startTimer() {
     if (_isTimerRunning) return;
     setState(() {
       _isTimerRunning = true;
+      _timerStartTime = DateTime.now().subtract(Duration(seconds: _seconds));
     });
-    
+
     // Agendar notificação para o fim do tempo selecionado
     NotificationService().scheduleRestNotification(_selectedRestTime - _seconds > 0 ? _selectedRestTime - _seconds : _selectedRestTime);
 
+    _startPeriodicTimer();
+  }
+
+  void _startPeriodicTimer() {
+    _timer?.cancel();
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       setState(() {
         _seconds++;
@@ -79,6 +106,7 @@ class _WorkoutExecutionScreenState extends ConsumerState<WorkoutExecutionScreen>
     NotificationService().cancelAllNotifications();
     setState(() {
       _isTimerRunning = false;
+      _timerStartTime = null;
     });
   }
 
@@ -88,6 +116,7 @@ class _WorkoutExecutionScreenState extends ConsumerState<WorkoutExecutionScreen>
     setState(() {
       _seconds = 0;
       _isTimerRunning = false;
+      _timerStartTime = null;
     });
   }
 
