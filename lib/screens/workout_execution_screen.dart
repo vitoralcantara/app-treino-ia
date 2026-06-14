@@ -734,13 +734,36 @@ class _WorkoutExecutionScreenState extends ConsumerState<WorkoutExecutionScreen>
                                           ),
                                         ),
                                       const SizedBox(height: 8),
+                                      // Cabeçalho das colunas
+                                      Padding(
+                                        padding: const EdgeInsets.symmetric(horizontal: 36, vertical: 4),
+                                        child: Row(
+                                          children: [
+                                            const SizedBox(width: 28, child: Text('Série', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey))),
+                                            const SizedBox(width: 8),
+                                            const Expanded(child: Text('Reps', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey))),
+                                            const SizedBox(width: 8),
+                                            const Expanded(child: Text('Peso (kg)', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey))),
+                                            const SizedBox(width: 8),
+                                            const SizedBox(width: 48, child: Text('Terminou?', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey))),
+                                            const SizedBox(width: 40),
+                                          ],
+                                        ),
+                                      ),
+                                      const Divider(height: 1),
+                                      const SizedBox(height: 4),
                                       ...sets.asMap().entries.map((entry) {
                                         int setIndex = entry.key;
                                         ExerciseSet set = entry.value;
                                         bool isCompleted = _completedSets[exercise.id!]![setIndex];
 
-                                        return Padding(
-                                          padding: const EdgeInsets.symmetric(vertical: 4.0),
+                                        return Container(
+                                          decoration: BoxDecoration(
+                                            color: isCompleted ? Colors.green.withValues(alpha: 0.1) : Colors.transparent,
+                                            borderRadius: BorderRadius.circular(8),
+                                          ),
+                                          padding: const EdgeInsets.symmetric(vertical: 4.0, horizontal: 4.0),
+                                          margin: const EdgeInsets.symmetric(vertical: 2.0),
                                           child: Row(
                                             children: [
                                               GestureDetector(
@@ -748,7 +771,7 @@ class _WorkoutExecutionScreenState extends ConsumerState<WorkoutExecutionScreen>
                                                 child: CircleAvatar(
                                                   radius: 14,
                                                   backgroundColor: isCompleted ? Colors.green : Colors.grey.shade700,
-                                                  child: set.technique == null 
+                                                  child: set.technique == null
                                                     ? Text('${setIndex + 1}', style: const TextStyle(fontSize: 12, color: Colors.white))
                                                     : Icon(_getTechniqueIcon(set.technique!), size: 14, color: Colors.white),
                                                 ),
