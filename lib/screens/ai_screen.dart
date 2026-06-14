@@ -268,14 +268,14 @@ Formato Exato:
 
   Future<void> _importFromFile() async {
     try {
-      final file = await FilePicker.pickFile(
+      final result = await FilePicker.pickFiles(
         type: FileType.custom,
         allowedExtensions: ['json', 'txt'],
       );
 
-      if (file == null || file.path == null) return;
+      if (result == null || result.files.single.path == null) return;
 
-      final pickedFile = File(file.path!);
+      final pickedFile = File(result.files.single.path!);
       final content = await pickedFile.readAsString();
       await _processJsonImport(content);
     } catch (e) {

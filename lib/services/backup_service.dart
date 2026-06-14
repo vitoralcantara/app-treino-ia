@@ -48,14 +48,14 @@ class BackupService {
 
   Future<String?> importBackup() async {
     try {
-      final file = await FilePicker.pickFile(
+      final result = await FilePicker.pickFiles(
         type: FileType.custom,
         allowedExtensions: ['json'],
       );
 
-      if (file == null || file.path == null) return null;
+      if (result == null || result.files.single.path == null) return null;
 
-      final pickedFile = File(file.path!);
+      final pickedFile = File(result.files.single.path!);
       final jsonString = await pickedFile.readAsString();
       final Map<String, dynamic> backupData = jsonDecode(jsonString);
 
@@ -66,7 +66,7 @@ class BackupService {
 
       await DatabaseHelper.instance.restoreFromBackup(backupData);
       await _updateLastBackupDate();
-      
+
       return "Backup restaurado com sucesso!";
     } catch (e) {
       return "Erro ao restaurar backup: $e";
