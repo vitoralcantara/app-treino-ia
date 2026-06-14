@@ -57,6 +57,13 @@ class _WorkoutExecutionScreenState extends ConsumerState<WorkoutExecutionScreen>
       final elapsedSeconds = DateTime.now().difference(_timerStartTime!).inSeconds;
       setState(() {
         _seconds = elapsedSeconds;
+        final remainingTime = _selectedRestTime - _seconds;
+
+        // Atualizar notificação com o tempo recalculado
+        if (remainingTime > 0) {
+          NotificationService().updateTimerNotification(remainingTime);
+        }
+
         if (_seconds >= _selectedRestTime) {
           _pauseTimer();
         } else {
@@ -83,6 +90,10 @@ class _WorkoutExecutionScreenState extends ConsumerState<WorkoutExecutionScreen>
       _timerStartTime = DateTime.now().subtract(Duration(seconds: _seconds));
     });
 
+    // Mostrar notificação em tempo real com o countdown
+    final remainingTime = _selectedRestTime - _seconds;
+    NotificationService().showActiveTimerNotification(remainingTime, _selectedRestTime);
+
     // Agendar notificação para o fim do tempo selecionado
     NotificationService().scheduleRestNotification(_selectedRestTime - _seconds > 0 ? _selectedRestTime - _seconds : _selectedRestTime);
 
@@ -94,6 +105,13 @@ class _WorkoutExecutionScreenState extends ConsumerState<WorkoutExecutionScreen>
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       setState(() {
         _seconds++;
+        final remainingTime = _selectedRestTime - _seconds;
+
+        // Atualizar notificação em tempo real
+        if (remainingTime > 0) {
+          NotificationService().updateTimerNotification(remainingTime);
+        }
+
         if (_seconds >= _selectedRestTime) {
           _pauseTimer();
         }

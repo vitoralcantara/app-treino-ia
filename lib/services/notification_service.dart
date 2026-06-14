@@ -60,6 +60,66 @@ class NotificationService {
     );
   }
 
+  Future<void> showActiveTimerNotification(int remainingSeconds, int totalSeconds) async {
+    final minutes = remainingSeconds ~/ 60;
+    final seconds = remainingSeconds % 60;
+    final timeString = '${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
+
+    await flutterLocalNotificationsPlugin.show(
+      id: 1,
+      title: '⏱️ Descanso em Andamento',
+      body: 'Tempo restante: $timeString',
+      notificationDetails: NotificationDetails(
+        android: AndroidNotificationDetails(
+          'rest_timer_channel',
+          'Temporizador de Descanso',
+          channelDescription: 'Notificações de fim de descanso no treino',
+          importance: Importance.high,
+          priority: Priority.high,
+          ongoing: true, // Faz a notificação ficar constante
+          autoCancel: false,
+          showWhen: false,
+          onlyAlertOnce: true, // Evita som/vibração a cada atualização
+        ),
+        iOS: DarwinNotificationDetails(
+          presentAlert: false,
+          presentBadge: true,
+          presentSound: false,
+        ),
+      ),
+    );
+  }
+
+  Future<void> updateTimerNotification(int remainingSeconds) async {
+    final minutes = remainingSeconds ~/ 60;
+    final seconds = remainingSeconds % 60;
+    final timeString = '${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
+
+    await flutterLocalNotificationsPlugin.show(
+      id: 1,
+      title: '⏱️ Descanso em Andamento',
+      body: 'Tempo restante: $timeString',
+      notificationDetails: NotificationDetails(
+        android: AndroidNotificationDetails(
+          'rest_timer_channel',
+          'Temporizador de Descanso',
+          channelDescription: 'Notificações de fim de descanso no treino',
+          importance: Importance.high,
+          priority: Priority.high,
+          ongoing: true,
+          autoCancel: false,
+          showWhen: false,
+          onlyAlertOnce: true,
+        ),
+        iOS: DarwinNotificationDetails(
+          presentAlert: false,
+          presentBadge: true,
+          presentSound: false,
+        ),
+      ),
+    );
+  }
+
   Future<void> cancelAllNotifications() async {
     await flutterLocalNotificationsPlugin.cancelAll();
   }
