@@ -240,16 +240,32 @@ class _WorkoutExecutionScreenState extends ConsumerState<WorkoutExecutionScreen>
 
   void _addSet(int exerciseId) {
     setState(() {
-      final lastSet = _setsByExercise[exerciseId]!.last;
-      _setsByExercise[exerciseId]!.add(
-        ExerciseSet(
-          reps: lastSet.reps,
-          weight: 0, // Nova série começa sem peso
-          exerciseId: exerciseId,
-          technique: lastSet.technique,
-        ),
-      );
-      _completedSets[exerciseId]!.add(false);
+      final sets = _setsByExercise[exerciseId]!;
+      
+      // Se não houver séries, cria a primeira com valores padrão
+      if (sets.isEmpty) {
+        _setsByExercise[exerciseId]!.add(
+          ExerciseSet(
+            reps: 10, // Valor padrão
+            weight: 0,
+            exerciseId: exerciseId,
+            technique: null,
+          ),
+        );
+        _completedSets[exerciseId]!.add(false);
+      } else {
+        // Se houver séries, copia da última
+        final lastSet = sets.last;
+        _setsByExercise[exerciseId]!.add(
+          ExerciseSet(
+            reps: lastSet.reps,
+            weight: 0, // Nova série começa sem peso
+            exerciseId: exerciseId,
+            technique: lastSet.technique,
+          ),
+        );
+        _completedSets[exerciseId]!.add(false);
+      }
     });
   }
 

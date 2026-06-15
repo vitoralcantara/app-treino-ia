@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:receive_sharing_intent/receive_sharing_intent.dart';
 import '../services/backup_service.dart';
+import 'workout_provider.dart';
 
 class ShareReceiverState {
   final bool isProcessing;
@@ -80,6 +81,12 @@ class ShareReceiverNotifier extends Notifier<ShareReceiverState> {
       final result = await _backupService.importBackupFromFile(filePath);
       
       if (result != null) {
+        // Forçar recarregamento total dos providers após a restauração
+        ref.invalidate(workoutListProvider);
+        ref.invalidate(sessionListProvider);
+        ref.invalidate(exerciseListProvider);
+        ref.invalidate(routineProgressProvider);
+        
         state = state.copyWith(
           isProcessing: false,
           lastSuccessMessage: result,
