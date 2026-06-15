@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/workout_provider.dart';
+import '../providers/share_receiver_provider.dart';
 import 'home_screen.dart';
 
 class SplashScreen extends ConsumerStatefulWidget {
@@ -41,6 +42,9 @@ class _SplashScreenState extends ConsumerState<SplashScreen> with SingleTickerPr
           Navigator.of(context).pushReplacement(
             MaterialPageRoute(builder: (context) => const HomeScreen()),
           );
+          
+          // Verificar se houve importação automática e mostrar mensagem
+          _checkAutoImportResult();
         }
       });
     });
@@ -51,6 +55,40 @@ class _SplashScreenState extends ConsumerState<SplashScreen> with SingleTickerPr
     ref.read(workoutListProvider);
     ref.read(exerciseListProvider);
     ref.read(sessionListProvider);
+    
+    // Iniciar o monitoramento de arquivos compartilhados
+    ref.read(shareReceiverProvider);
+  }
+
+  void _checkAutoImportResult() {
+    // Usar Future.delayed para dar tempo ao provider processar o arquivo
+    Future.delayed(const Duration(seconds: 2), () {
+      if (!mounted) return;
+      
+      final shareState = ref.read(shareReceiverProvider);
+      
+      if (shareState.lastSuccessMessage != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(shareState.lastSuccessMessage!),
+            backgroundColor: Colors.green,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+        // Limpar a mensagem após mostrar
+        ref.read(shareReceiverProvider.notifier).clearMessages();
+      } else if (shareState.lastError != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(shareState.lastError!),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+        // Limpar a mensagem após mostrar
+        ref.read(shareReceiverProvider.notifier).clearMessages();
+      }
+    });
   }
 
 

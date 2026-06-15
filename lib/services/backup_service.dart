@@ -55,7 +55,15 @@ class BackupService {
 
       if (result == null || result.files.single.path == null) return null;
 
-      final pickedFile = File(result.files.single.path!);
+      return await importBackupFromFile(result.files.single.path!);
+    } catch (e) {
+      return "Erro ao restaurar backup: $e";
+    }
+  }
+
+  Future<String?> importBackupFromFile(String filePath) async {
+    try {
+      final pickedFile = File(filePath);
       final jsonString = await pickedFile.readAsString();
       final Map<String, dynamic> backupData = jsonDecode(jsonString);
 
