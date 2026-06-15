@@ -141,4 +141,8 @@ class GoogleDriveService {
       return null;
     }
   }
+
+  Future<String> getDatabasePath() async {
+    return await DatabaseHelper.instance.getDatabasePath();
+  }
 }

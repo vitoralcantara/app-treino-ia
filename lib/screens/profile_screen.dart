@@ -175,6 +175,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     final backupState = ref.watch(backupProvider);
+    final settings = ref.watch(settingsProvider);
 
     return Padding(
       padding: const EdgeInsets.all(16.0),
@@ -366,6 +367,75 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 ),
               ),
             ),
+
+            const SizedBox(height: 15),
+            // Configurações de Auto-Sync (apenas quando conectado)
+            if (backupState.userEmail != null)
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(12.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          const Icon(Icons.sync, size: 20),
+                          const SizedBox(width: 8),
+                          const Text(
+                            'Sincronização Automática',
+                            style: TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                          const Spacer(),
+                          if (backupState.isAutoSyncing)
+                            const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            ),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      SwitchListTile(
+                        title: const Text('Sincronizar automaticamente'),
+                        subtitle: const Text('Faz backup/restauração automática quando há mudanças'),
+                        value: settings.autoSyncEnabled,
+                        onChanged: (value) {
+                          ref.read(settingsProvider.notifier).setAutoSyncEnabled(value);
+                        },
+                        contentPadding: EdgeInsets.zero,
+                      ),
+                      SwitchListTile(
+                        title: const Text('Sincronizar apenas em Wi-Fi'),
+                        subtitle: const Text('Economiza dados móveis'),
+                        value: settings.syncOnWifiOnly,
+                        onChanged: (value) {
+                          ref.read(settingsProvider.notifier).setSyncOnWifiOnly(value);
+                        },
+                        contentPadding: EdgeInsets.zero,
+                      ),
+                      ListTile(
+                        title: const Text('Intervalo de sincronização'),
+                        subtitle: Text('${settings.syncIntervalMinutes} minutos'),
+                        trailing: DropdownButton<int>(
+                          value: settings.syncIntervalMinutes,
+                          items: [5, 15, 30, 60, 120].map((minutes) {
+                            return DropdownMenuItem<int>(
+                              value: minutes,
+                              child: Text('$minutes min'),
+                            );
+                          }).toList(),
+                          onChanged: (value) {
+                            if (value != null) {
+                              ref.read(settingsProvider.notifier).setSyncIntervalMinutes(value);
+                            }
+                          },
+                        ),
+                        contentPadding: EdgeInsets.zero,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
 
             const SizedBox(height: 30),
             const Text(

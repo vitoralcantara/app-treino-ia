@@ -21,8 +21,8 @@ class WorkoutListNotifier extends Notifier<List<Workout>> {
   }
 
   void _triggerCloudBackup() {
-    // Tenta fazer backup de forma silenciosa
-    ref.read(backupProvider.notifier).uploadBackup();
+    // Tenta fazer sincronização automática respeitando as configurações do usuário
+    ref.read(backupProvider.notifier).triggerAutoSync();
   }
 
   Future<void> archiveCurrentRoutine() async {
@@ -121,7 +121,8 @@ class ExerciseListNotifier extends Notifier<AsyncValue<List<Exercise>>> {
   }
 
   void _triggerCloudBackup() {
-    ref.read(backupProvider.notifier).uploadBackup();
+    // Tenta fazer sincronização automática respeitando as configurações do usuário
+    ref.read(backupProvider.notifier).triggerAutoSync();
   }
 
   Future<void> addExercise(Exercise exercise) async {
@@ -168,7 +169,8 @@ class SessionListNotifier extends Notifier<List<WorkoutSession>> {
   }
 
   void _triggerCloudBackup() {
-    ref.read(backupProvider.notifier).uploadBackup();
+    // Tenta fazer sincronização automática respeitando as configurações do usuário
+    ref.read(backupProvider.notifier).triggerAutoSync();
   }
 
   Future<void> addSession(WorkoutSession session) async {
