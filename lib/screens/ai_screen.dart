@@ -99,9 +99,11 @@ Regras de Formatação:
 2. "routine_name": Nome do ciclo (ex: Hipertrofia Fase 1).
 3. "suggested_duration_weeks": Quantas semanas o treino deve durar (ex: 4).
 4. "workouts": Lista de treinos (ex: Treino A, B, C).
-5. "suggested_sets" e "suggested_reps": Use APENAS números inteiros (ex: 12). NUNCA use texto como "12/10/8".
-6. "group": (Opcional) Use o mesmo ID para exercícios em Bi-set/Super série.
-7. "technique": (Opcional) Use "drop_set" ou "rest_pause".
+5. "suggested_sets": Número de séries para o exercício (ex: 3).
+6. "suggested_reps": Repetições para a primeira série (ex: 12).
+7. "suggested_reps_list": (OBRIGATÓRIO) Lista de reps para cada série em formato progressivo (ex: [12, 10, 8] para drop-set ou [12, 10, 10] para pirâmide). Use padrão [12, 10, 8] para hipertrofia.
+8. "group": (Opcional) Use o mesmo ID para exercícios em Bi-set/Super série.
+9. "technique": (Opcional) Use "drop_set", "rest_pause", ou null.
 
 Formato Exato:
 {
@@ -116,6 +118,7 @@ Formato Exato:
           "category": "Grupo Muscular",
           "suggested_sets": 3,
           "suggested_reps": 12,
+          "suggested_reps_list": [12, 10, 8],
           "notes": "Observações/Instruções",
           "video_url": "link se houver",
           "group": "opcional_id",

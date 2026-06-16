@@ -55,14 +55,19 @@ Responda EXCLUSIVAMENTE com o código JSON puro seguindo este formato exato:
           "name": "Supino Reto",
           "category": "Peito",
           "suggested_sets": 4,
-          "suggested_reps": 10,
+          "suggested_reps": 12,
+          "suggested_reps_list": [12, 10, 8, 8],
           "notes": "Focar na cadência 3-1-1",
-          "video_url": "link se houver"
+          "video_url": "link se houver",
+          "group": "opcional_id",
+          "technique": "opcional"
         }
       ]
     }
   ]
 }
+
+IMPORTANTE: Sempre inclua o campo "suggested_reps_list" com uma lista progressiva de repetições para cada série (ex: [12, 10, 8, 8]). Use padrões progressivos como [12, 10, 8] para drop-set ou [12, 10, 10] para pirâmide.
 
 $profileContext
 
