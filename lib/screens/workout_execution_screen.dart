@@ -181,12 +181,44 @@ class _WorkoutExecutionScreenState extends ConsumerState<WorkoutExecutionScreen>
       ),
     );
 
-    setState(() {
-      for (var exercise in _dynamicExercises) {
-        // Buscar séries desta última sessão para este exercício
-        final previousSets = lastSession.sets.where((s) => s.exerciseId == exercise.id).toList();
+    // Inicializar todos os exercícios com séries padrão primeiro
+    for (var exercise in _dynamicExercises) {
+      if (!_setsByExercise.containsKey(exercise.id) || _setsByExercise[exercise.id]!.isEmpty) {
+        // Inicializar com valores padrão imediatamente
+        final suggestedSets = exercise.suggestedSets ?? 3;
+        final suggestedReps = exercise.suggestedReps ?? 10;
+        final suggestedList = exercise.suggestedRepsList;
 
-        if (previousSets.isNotEmpty) {
+        final defaultSets = List.generate(
+          suggestedSets,
+          (i) {
+            int reps = suggestedReps;
+            if (suggestedList != null && i < suggestedList.length) {
+              reps = suggestedList[i];
+            }
+            return ExerciseSet(
+              reps: reps,
+              weight: 0,
+              exerciseId: exercise.id,
+              technique: exercise.suggestedTechnique,
+            );
+          },
+        );
+
+        _setsByExercise[exercise.id!] = defaultSets;
+        _completedSets[exercise.id!] = List.generate(suggestedSets, (_) => false);
+      }
+    }
+
+    setState(() {});
+
+    // Agora tentar carregar dados reais (sessão anterior ou pesos padrão)
+    for (var exercise in _dynamicExercises) {
+      // Buscar séries desta última sessão para este exercício
+      final previousSets = lastSession.sets.where((s) => s.exerciseId == exercise.id).toList();
+
+      if (previousSets.isNotEmpty) {
+        setState(() {
           _setsByExercise[exercise.id!] = previousSets.map((s) => ExerciseSet(
             reps: s.reps,
             weight: s.weight,
@@ -194,12 +226,12 @@ class _WorkoutExecutionScreenState extends ConsumerState<WorkoutExecutionScreen>
             technique: s.technique,
           )).toList();
           _completedSets[exercise.id!] = List.generate(previousSets.length, (_) => false);
-        } else {
-          // Tentar carregar pesos padrão do exercício (independente do treino)
-          _loadDefaultWeightsForExercise(exercise, db);
-        }
+        });
+      } else {
+        // Tentar carregar pesos padrão do exercício (independente do treino)
+        await _loadDefaultWeightsForExercise(exercise, db);
       }
-    });
+    }
   }
 
   Future<void> _loadDefaultWeightsForExercise(Exercise exercise, DatabaseHelper db) async {
@@ -216,23 +248,25 @@ class _WorkoutExecutionScreenState extends ConsumerState<WorkoutExecutionScreen>
       final suggestedReps = exercise.suggestedReps ?? 10;
       final suggestedList = exercise.suggestedRepsList;
 
+      final sets = List.generate(
+        suggestedSets,
+        (i) {
+          int reps = suggestedReps;
+          // Se houver uma lista de reps específica para cada série, usa ela
+          if (suggestedList != null && i < suggestedList.length) {
+            reps = suggestedList[i];
+          }
+          return ExerciseSet(
+            reps: reps,
+            weight: 0,
+            exerciseId: exercise.id,
+            technique: exercise.suggestedTechnique,
+          );
+        },
+      );
+
       setState(() {
-        _setsByExercise[exercise.id!] = List.generate(
-          suggestedSets,
-          (i) {
-            int reps = suggestedReps;
-            // Se houver uma lista de reps específica para cada série, usa ela
-            if (suggestedList != null && i < suggestedList.length) {
-              reps = suggestedList[i];
-            }
-            return ExerciseSet(
-              reps: reps,
-              weight: 0,
-              exerciseId: exercise.id,
-              technique: exercise.suggestedTechnique,
-            );
-          },
-        );
+        _setsByExercise[exercise.id!] = sets;
         _completedSets[exercise.id!] = List.generate(suggestedSets, (_) => false);
       });
     }
@@ -240,6 +274,12 @@ class _WorkoutExecutionScreenState extends ConsumerState<WorkoutExecutionScreen>
 
   void _addSet(int exerciseId) {
     setState(() {
+      // Garantir que o map tenha a chave do exercício
+      if (!_setsByExercise.containsKey(exerciseId)) {
+        _setsByExercise[exerciseId] = [];
+        _completedSets[exerciseId] = [];
+      }
+      
       final sets = _setsByExercise[exerciseId]!;
       
       // Se não houver séries, cria a primeira com valores padrão
@@ -507,7 +547,16 @@ class _WorkoutExecutionScreenState extends ConsumerState<WorkoutExecutionScreen>
   }
 
   void _toggleTechnique(int exerciseId, int setIndex) {
+    // Garantir que o map tenha a chave do exercício
+    if (!_setsByExercise.containsKey(exerciseId)) {
+      return;
+    }
+    
     final sets = _setsByExercise[exerciseId]!;
+    if (setIndex >= sets.length) {
+      return;
+    }
+    
     final currentTech = sets[setIndex].technique;
     String? nextTech;
     
