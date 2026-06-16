@@ -54,51 +54,56 @@ class BackupNotifier extends Notifier<BackupState> {
 
   @override
   BackupState build() {
+    // Inicialização assíncrona sem modificar o estado durante o build
     _init();
     return BackupState();
   }
 
   Future<void> _init() async {
-    state = state.copyWith(isConnecting: true);
-    final account = await _driveService.silentSignIn;
-    if (account != null) {
-      final lastBackup = await _driveService.getLatestBackupDate();
-      state = state.copyWith(
-        userEmail: account.email,
-        lastBackupDate: lastBackup,
-        isConnecting: false,
-      );
-      // Tenta sincronizar automaticamente ao iniciar se estiver habilitado
-      _tryAutoSync();
-    } else {
-      state = state.copyWith(isConnecting: false);
+    try {
+      final account = await _driveService.silentSignIn;
+      if (account != null) {
+        final lastBackup = await _driveService.getLatestBackupDate();
+        state = state.copyWith(
+          userEmail: account.email,
+          lastBackupDate: lastBackup,
+        );
+        // Tenta sincronizar automaticamente ao iniciar se estiver habilitado
+        _tryAutoSync();
+      }
+    } catch (e) {
+      // Erro silencioso durante inicialização
     }
   }
 
   Future<void> _tryAutoSync() async {
-    final settings = ref.read(settingsProvider);
-    
-    // Verifica se auto-sync está habilitado
-    if (!settings.autoSyncEnabled) return;
-    
-    // Verifica se está conectado ao Google Drive
-    if (state.userEmail == null) return;
-    
-    // Verifica throttling - não sincroniza se foi sincronizado recentemente
-    if (_lastManualSyncTime != null) {
-      final timeSinceLastSync = DateTime.now().difference(_lastManualSyncTime!);
-      if (timeSinceLastSync < _minSyncInterval) return;
+    try {
+      final settings = ref.read(settingsProvider);
+      
+      // Verifica se auto-sync está habilitado
+      if (!settings.autoSyncEnabled) return;
+      
+      // Verifica se está conectado ao Google Drive
+      if (state.userEmail == null) return;
+      
+      // Verifica throttling - não sincroniza se foi sincronizado recentemente
+      if (_lastManualSyncTime != null) {
+        final timeSinceLastSync = DateTime.now().difference(_lastManualSyncTime!);
+        if (timeSinceLastSync < _minSyncInterval) return;
+      }
+      
+      // Verifica intervalo configurado
+      if (state.lastSyncAttempt != null) {
+        final timeSinceLastAttempt = DateTime.now().difference(state.lastSyncAttempt!);
+        final configuredInterval = Duration(minutes: settings.syncIntervalMinutes);
+        if (timeSinceLastAttempt < configuredInterval) return;
+      }
+      
+      // Executa sincronização automática
+      await _performAutoSync();
+    } catch (e) {
+      // Erro ao ler settings ou durante sync, ignora silenciosamente
     }
-    
-    // Verifica intervalo configurado
-    if (state.lastSyncAttempt != null) {
-      final timeSinceLastAttempt = DateTime.now().difference(state.lastSyncAttempt!);
-      final configuredInterval = Duration(minutes: settings.syncIntervalMinutes);
-      if (timeSinceLastAttempt < configuredInterval) return;
-    }
-    
-    // Executa sincronização automática
-    await _performAutoSync();
   }
 
   Future<void> _performAutoSync() async {
