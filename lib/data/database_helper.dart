@@ -678,6 +678,32 @@ class DatabaseHelper {
     });
   }
 
+  // Carregar pesos padrão para vários exercícios de uma vez
+  Future<Map<int, List<ExerciseSet>>> getAllExerciseDefaultWeights(List<int> exerciseIds) async {
+    if (exerciseIds.isEmpty) return {};
+    
+    final db = await instance.database;
+    final String ids = exerciseIds.join(',');
+    final List<Map<String, dynamic>> maps = await db.query(
+      'exercise_default_weights',
+      where: 'exercise_id IN ($ids)',
+      orderBy: 'exercise_id, position',
+    );
+
+    final Map<int, List<ExerciseSet>> result = {};
+    for (var map in maps) {
+      final id = map['exercise_id'] as int;
+      result.putIfAbsent(id, () => []);
+      result[id]!.add(ExerciseSet(
+        reps: map['reps'],
+        weight: map['weight'] is int ? (map['weight'] as int).toDouble() : map['weight'],
+        exerciseId: id,
+        technique: map['technique'],
+      ));
+    }
+    return result;
+  }
+
   Future close() async {
     final db = await instance.database;
     db.close();
