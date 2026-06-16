@@ -171,10 +171,12 @@ class _WorkoutExecutionScreenState extends ConsumerState<WorkoutExecutionScreen>
   }
 
   void _loadLastSessionData() async {
+    print('[Carregamento] Iniciando carregamento de dados do treino ${widget.workout.name}');
     final sessions = ref.read(sessionListProvider);
     final db = ref.read(databaseProvider);
     _dynamicExercises.clear();
     _dynamicExercises.addAll(widget.workout.exercises);
+    print('[Carregamento] ${_dynamicExercises.length} exercícios para carregar');
 
     // Encontrar a última sessão deste treino específico
     final lastSession = sessions.firstWhere(
@@ -185,10 +187,12 @@ class _WorkoutExecutionScreenState extends ConsumerState<WorkoutExecutionScreen>
         date: DateTime.now(),
       ),
     );
+    print('[Carregamento] Sessão encontrada: ${lastSession.workoutName} com ${lastSession.sets.length} séries');
 
     // Inicializar todos os exercícios com séries padrão primeiro
     for (var exercise in _dynamicExercises) {
       if (!_setsByExercise.containsKey(exercise.id) || _setsByExercise[exercise.id]!.isEmpty) {
+        print('[Carregamento] Inicializando exercício ${exercise.name} com valores padrão');
         // Inicializar com valores padrão imediatamente
         final suggestedSets = exercise.suggestedSets ?? 3;
         final suggestedReps = exercise.suggestedReps ?? 10;
@@ -217,24 +221,30 @@ class _WorkoutExecutionScreenState extends ConsumerState<WorkoutExecutionScreen>
 
     setState(() {});
 
-    // Agora tentar carregar dados reais (sessão anterior ou pesos padrão)
+    // Agora tentar carregar dados reais (priorizar pesos padrão auto-salvos)
     for (var exercise in _dynamicExercises) {
-      // Buscar séries desta última sessão para este exercício
-      final previousSets = lastSession.sets.where((s) => s.exerciseId == exercise.id).toList();
+      // Primeiro tentar carregar pesos padrão (auto-save)
+      await _loadDefaultWeightsForExercise(exercise, db);
+      
+      // Só carregar sessão anterior se não houver pesos padrão
+      final hasDefaultWeights = _setsByExercise[exercise.id!]!.any((set) => set.weight > 0);
+      if (!hasDefaultWeights) {
+        print('[Carregamento] Sem pesos padrão, carregando sessão anterior para ${exercise.name}');
+        final previousSets = lastSession.sets.where((s) => s.exerciseId == exercise.id).toList();
 
-      if (previousSets.isNotEmpty) {
-        setState(() {
-          _setsByExercise[exercise.id!] = previousSets.map((s) => ExerciseSet(
-            reps: s.reps,
-            weight: s.weight,
-            exerciseId: exercise.id,
-            technique: s.technique,
-          )).toList();
-          _completedSets[exercise.id!] = List.generate(previousSets.length, (_) => false);
-        });
+        if (previousSets.isNotEmpty) {
+          setState(() {
+            _setsByExercise[exercise.id!] = previousSets.map((s) => ExerciseSet(
+              reps: s.reps,
+              weight: s.weight,
+              exerciseId: exercise.id,
+              technique: s.technique,
+            )).toList();
+            _completedSets[exercise.id!] = List.generate(previousSets.length, (_) => false);
+          });
+        }
       } else {
-        // Tentar carregar pesos padrão do exercício (independente do treino)
-        await _loadDefaultWeightsForExercise(exercise, db);
+        print('[Carregamento] Usando pesos padrão auto-salvos para ${exercise.name}');
       }
     }
     
@@ -243,14 +253,17 @@ class _WorkoutExecutionScreenState extends ConsumerState<WorkoutExecutionScreen>
   }
 
   Future<void> _loadDefaultWeightsForExercise(Exercise exercise, DatabaseHelper db) async {
+    print('[Carregamento] Carregando pesos padrão para ${exercise.name}');
     final defaultWeights = await db.getExerciseDefaultWeights(exercise.id!);
 
     if (defaultWeights.isNotEmpty) {
+      print('[Carregamento] Encontrados ${defaultWeights.length} pesos padrão para ${exercise.name}');
       setState(() {
         _setsByExercise[exercise.id!] = defaultWeights;
         _completedSets[exercise.id!] = List.generate(defaultWeights.length, (_) => false);
       });
     } else {
+      print('[Carregamento] Nenhum peso padrão encontrado para ${exercise.name}, usando sugestões');
       // Usar sugestão da IA se disponível, senão padrão
       final suggestedSets = exercise.suggestedSets ?? 3;
       final suggestedReps = exercise.suggestedReps ?? 10;
@@ -321,8 +334,10 @@ class _WorkoutExecutionScreenState extends ConsumerState<WorkoutExecutionScreen>
   }
 
   void _scheduleAutoSave() {
+    print('[Auto-save] Agendando auto-save (debounce de 1s)');
     _autoSaveTimer?.cancel();
     _autoSaveTimer = Timer(_autoSaveDebounce, () {
+      print('[Auto-save] Executando auto-save agora');
       _saveCurrentWeights();
     });
   }
@@ -331,16 +346,22 @@ class _WorkoutExecutionScreenState extends ConsumerState<WorkoutExecutionScreen>
     try {
       final db = ref.read(databaseProvider);
       
+      print('[Auto-save] Salvando pesos para ${_dynamicExercises.length} exercícios...');
+      
       for (var exercise in _dynamicExercises) {
         final exerciseId = exercise.id!;
         final sets = _setsByExercise[exerciseId]!;
         
         // Salvar os pesos atuais como pesos padrão
         if (sets.isNotEmpty) {
+          print('[Auto-save] Exercício ${exercise.name}: ${sets.length} séries');
           await db.saveExerciseDefaultWeights(exerciseId, sets);
         }
       }
+      
+      print('[Auto-save] Pesos salvos com sucesso!');
     } catch (e) {
+      print('[Auto-save] Erro ao salvar pesos: $e');
       // Erro silencioso no auto-save para não interromper o usuário
     }
   }
