@@ -8,6 +8,7 @@ import '../data/database_helper.dart';
 
 class BackupService {
   static const String _lastBackupKey = 'last_backup_timestamp';
+  static const String _firstInstallationKey = 'first_installation_date';
 
   Future<void> exportBackup() async {
     final db = DatabaseHelper.instance;
@@ -81,16 +82,36 @@ class BackupService {
     }
   }
 
-  Future<bool> shouldShowBackupReminder() async {
-    final prefs = await SharedPreferences.getInstance();
-    final lastBackupMillis = prefs.getInt(_lastBackupKey) ?? 0;
-    
-    if (lastBackupMillis == 0) return true; // Nunca fez backup
+  Future<bool> shouldShowBackupReminder({bool autoSyncEnabled = true}) async {
+    // Se auto-sync está ativo, não mostrar lembrete de backup
+    if (autoSyncEnabled) {
+      return false;
+    }
 
-    final lastBackup = DateTime.fromMillisecondsSinceEpoch(lastBackupMillis);
+    final prefs = await SharedPreferences.getInstance();
+    
+    // Registrar primeira instalação se não existir
+    if (!prefs.containsKey(_firstInstallationKey)) {
+      await prefs.setInt(_firstInstallationKey, DateTime.now().millisecondsSinceEpoch);
+    }
+    
+    final firstInstallationMillis = prefs.getInt(_firstInstallationKey)!;
+    final firstInstallation = DateTime.fromMillisecondsSinceEpoch(firstInstallationMillis);
     final now = DateTime.now();
     
-    // Diferença maior que 30 dias
+    // Só mostrar lembrete após 30 dias de uso do app
+    if (now.difference(firstInstallation).inDays < 30) {
+      return false;
+    }
+
+    final lastBackupMillis = prefs.getInt(_lastBackupKey) ?? 0;
+    
+    // Se nunca fez backup, mostrar lembrete após 30 dias de uso
+    if (lastBackupMillis == 0) return true;
+
+    final lastBackup = DateTime.fromMillisecondsSinceEpoch(lastBackupMillis);
+    
+    // Se passou 30 dias desde o último backup, mostrar lembrete
     return now.difference(lastBackup).inDays >= 30;
   }
 

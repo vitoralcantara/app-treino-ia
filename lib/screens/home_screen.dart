@@ -6,6 +6,7 @@ import '../models/workout.dart';
 import '../models/routine.dart';
 import '../services/ai_prompt_helper.dart';
 import '../providers/workout_provider.dart';
+import '../providers/settings_provider.dart';
 import '../services/backup_service.dart';
 import 'workout_execution_screen.dart';
 import 'workout_details_screen.dart';
@@ -40,7 +41,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   Future<void> _checkBackupReminder() async {
     final backupService = BackupService();
-    if (await backupService.shouldShowBackupReminder()) {
+    final settings = ref.read(settingsProvider);
+    
+    if (await backupService.shouldShowBackupReminder(autoSyncEnabled: settings.autoSyncEnabled)) {
       if (mounted) {
         _showBackupReminderDialog();
       }
@@ -59,7 +62,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           ],
         ),
         content: const Text(
-          'Faz mais de um mês desde o seu último backup. Que tal salvar seus treinos e histórico agora?',
+          'Você usa o app há mais de 30 dias e ainda não configurou o backup automático. Que tal salvar seus treinos e histórico agora?',
         ),
         actions: [
           TextButton(
