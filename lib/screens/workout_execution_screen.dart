@@ -253,18 +253,48 @@ class _WorkoutExecutionScreenState extends ConsumerState<WorkoutExecutionScreen>
   }
 
   Future<void> _loadDefaultWeightsForExercise(Exercise exercise, DatabaseHelper db) async {
-    print('[Carregamento] Carregando pesos padrão para ${exercise.name}');
-    final defaultWeights = await db.getExerciseDefaultWeights(exercise.id!);
+    try {
+      print('[Carregamento] Carregando pesos padrão para ${exercise.name}');
+      final defaultWeights = await db.getExerciseDefaultWeights(exercise.id!);
 
-    if (defaultWeights.isNotEmpty) {
-      print('[Carregamento] Encontrados ${defaultWeights.length} pesos padrão para ${exercise.name}');
-      setState(() {
-        _setsByExercise[exercise.id!] = defaultWeights;
-        _completedSets[exercise.id!] = List.generate(defaultWeights.length, (_) => false);
-      });
-    } else {
-      print('[Carregamento] Nenhum peso padrão encontrado para ${exercise.name}, usando sugestões');
-      // Usar sugestão da IA se disponível, senão padrão
+      if (defaultWeights.isNotEmpty) {
+        print('[Carregamento] Encontrados ${defaultWeights.length} pesos padrão para ${exercise.name}');
+        setState(() {
+          _setsByExercise[exercise.id!] = defaultWeights;
+          _completedSets[exercise.id!] = List.generate(defaultWeights.length, (_) => false);
+        });
+      } else {
+        print('[Carregamento] Nenhum peso padrão encontrado para ${exercise.name}, usando sugestões');
+        // Usar sugestão da IA se disponível, senão padrão
+        final suggestedSets = exercise.suggestedSets ?? 3;
+        final suggestedReps = exercise.suggestedReps ?? 10;
+        final suggestedList = exercise.suggestedRepsList;
+
+        final sets = List.generate(
+          suggestedSets,
+          (i) {
+            int reps = suggestedReps;
+            // Se houver uma lista de reps específica para cada série, usa ela
+            if (suggestedList != null && i < suggestedList.length) {
+              reps = suggestedList[i];
+            }
+            return ExerciseSet(
+              reps: reps,
+              weight: 0,
+              exerciseId: exercise.id,
+              technique: exercise.suggestedTechnique,
+            );
+          },
+        );
+
+        setState(() {
+          _setsByExercise[exercise.id!] = sets;
+          _completedSets[exercise.id!] = List.generate(suggestedSets, (_) => false);
+        });
+      }
+    } catch (e) {
+      print('[Carregamento] Erro ao carregar pesos padrão para ${exercise.name}: $e');
+      // Se der erro (tabela não existe), usar valores padrão
       final suggestedSets = exercise.suggestedSets ?? 3;
       final suggestedReps = exercise.suggestedReps ?? 10;
       final suggestedList = exercise.suggestedRepsList;
@@ -273,7 +303,6 @@ class _WorkoutExecutionScreenState extends ConsumerState<WorkoutExecutionScreen>
         suggestedSets,
         (i) {
           int reps = suggestedReps;
-          // Se houver uma lista de reps específica para cada série, usa ela
           if (suggestedList != null && i < suggestedList.length) {
             reps = suggestedList[i];
           }

@@ -26,7 +26,7 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 13, // Aumentei a versão para 13
+      version: 14, // Aumentei a versão para 14 para criar tabela exercise_default_weights
       onCreate: _createDB,
       onUpgrade: _upgradeDB,
     );
@@ -111,6 +111,24 @@ class DatabaseHelper {
       ''');
       await db.execute('CREATE INDEX idx_exercise_default_weights_exercise_id ON exercise_default_weights(exercise_id)');
     }
+    if (oldVersion < 14) {
+      // Garantir que a tabela exercise_default_weights exista (para bancos que podem não ter criado na versão 13)
+      try {
+        await db.execute('''
+          CREATE TABLE IF NOT EXISTS exercise_default_weights (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            exercise_id INTEGER NOT NULL,
+            reps INTEGER NOT NULL,
+            weight REAL NOT NULL,
+            position INTEGER NOT NULL,
+            technique TEXT,
+            updated_at TEXT NOT NULL,
+            FOREIGN KEY (exercise_id) REFERENCES exercises (id) ON DELETE CASCADE
+          )
+        ''');
+        await db.execute('CREATE INDEX IF NOT EXISTS idx_exercise_default_weights_exercise_id ON exercise_default_weights(exercise_id)');
+      } catch (_) {}
+    }
   }
 
   Future _createDB(Database db, int version) async {
@@ -194,6 +212,20 @@ class DatabaseHelper {
         FOREIGN KEY (exercise_id) REFERENCES exercises (id) ON DELETE CASCADE
       )
     ''');
+
+    await db.execute('''
+      CREATE TABLE exercise_default_weights (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        exercise_id INTEGER NOT NULL,
+        reps INTEGER NOT NULL,
+        weight REAL NOT NULL,
+        position INTEGER NOT NULL,
+        technique TEXT,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY (exercise_id) REFERENCES exercises (id) ON DELETE CASCADE
+      )
+    ''');
+    await db.execute('CREATE INDEX idx_exercise_default_weights_exercise_id ON exercise_default_weights(exercise_id)');
 
     await _seedExercises(db);
   }
