@@ -34,6 +34,10 @@ class _WorkoutExecutionScreenState extends ConsumerState<WorkoutExecutionScreen>
   int _selectedRestTime = 60; // Tempo de descanso padrão: 60s
   static const String _restTimeKey = 'selected_rest_time';
   DateTime? _timerStartTime; // Timestamp quando o timer foi iniciado
+  
+  // Auto-save de pesos
+  Timer? _autoSaveTimer;
+  static const Duration _autoSaveDebounce = Duration(milliseconds: 1000);
 
   @override
   void initState() {
@@ -46,6 +50,7 @@ class _WorkoutExecutionScreenState extends ConsumerState<WorkoutExecutionScreen>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _timer?.cancel();
+    _autoSaveTimer?.cancel();
     NotificationService().cancelAllNotifications();
     super.dispose();
   }
@@ -232,6 +237,9 @@ class _WorkoutExecutionScreenState extends ConsumerState<WorkoutExecutionScreen>
         await _loadDefaultWeightsForExercise(exercise, db);
       }
     }
+    
+    // Disparar auto-save inicial para garantir que os pesos sejam persistidos
+    _scheduleAutoSave();
   }
 
   Future<void> _loadDefaultWeightsForExercise(Exercise exercise, DatabaseHelper db) async {
@@ -307,6 +315,34 @@ class _WorkoutExecutionScreenState extends ConsumerState<WorkoutExecutionScreen>
         _completedSets[exerciseId]!.add(false);
       }
     });
+    
+    // Agendar auto-save ao adicionar série
+    _scheduleAutoSave();
+  }
+
+  void _scheduleAutoSave() {
+    _autoSaveTimer?.cancel();
+    _autoSaveTimer = Timer(_autoSaveDebounce, () {
+      _saveCurrentWeights();
+    });
+  }
+
+  Future<void> _saveCurrentWeights() async {
+    try {
+      final db = ref.read(databaseProvider);
+      
+      for (var exercise in _dynamicExercises) {
+        final exerciseId = exercise.id!;
+        final sets = _setsByExercise[exerciseId]!;
+        
+        // Salvar os pesos atuais como pesos padrão
+        if (sets.isNotEmpty) {
+          await db.saveExerciseDefaultWeights(exerciseId, sets);
+        }
+      }
+    } catch (e) {
+      // Erro silencioso no auto-save para não interromper o usuário
+    }
   }
 
   void _finishWorkout() async {
@@ -576,6 +612,9 @@ class _WorkoutExecutionScreenState extends ConsumerState<WorkoutExecutionScreen>
         technique: nextTech,
       );
     });
+
+    // Agendar auto-save ao alterar técnica
+    _scheduleAutoSave();
 
     if (nextTech != null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -913,6 +952,8 @@ class _WorkoutExecutionScreenState extends ConsumerState<WorkoutExecutionScreen>
                                                       exerciseId: exercise.id,
                                                       technique: sets[setIndex].technique,
                                                     );
+                                                    // Agendar auto-save dos pesos
+                                                    _scheduleAutoSave();
                                                   },
                                                 ),
                                               ),
@@ -935,6 +976,8 @@ class _WorkoutExecutionScreenState extends ConsumerState<WorkoutExecutionScreen>
                                                     sets.removeAt(setIndex);
                                                     _completedSets[exercise.id!]!.removeAt(setIndex);
                                                   });
+                                                  // Agendar auto-save ao remover série
+                                                  _scheduleAutoSave();
                                                 },
                                               ),
                                             ],
