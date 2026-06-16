@@ -12,6 +12,7 @@ import '../services/document_service.dart';
 import '../providers/workout_provider.dart';
 import '../providers/profile_provider.dart';
 import '../providers/ai_provider.dart';
+import '../providers/backup_provider.dart';
 import '../models/exercise.dart';
 import '../models/workout.dart';
 import 'exercise_library_screen.dart';
@@ -338,6 +339,9 @@ Formato Exato:
         // Se não for substituir, a nova rotina entra como inativa (0)
         isActive: shouldReplace ? 1 : 0, 
       );
+      
+      // Disparar sincronização automática para salvar a nova rotina
+      ref.read(backupProvider.notifier).triggerAutoSync();
       
       // 3. Adicionar os treinos
       for (var workoutJson in workoutsJson) {
