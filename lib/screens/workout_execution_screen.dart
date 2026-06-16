@@ -833,7 +833,7 @@ class _WorkoutExecutionScreenState extends ConsumerState<WorkoutExecutionScreen>
                                       const SizedBox(height: 8),
                                       // Cabeçalho das colunas
                                       Padding(
-                                        padding: const EdgeInsets.symmetric(horizontal: 36, vertical: 4),
+                                        padding: const EdgeInsets.symmetric(horizontal: 4.0, vertical: 4),
                                         child: Row(
                                           children: [
                                             const SizedBox(width: 28, child: Text('Série', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey))),
@@ -842,7 +842,7 @@ class _WorkoutExecutionScreenState extends ConsumerState<WorkoutExecutionScreen>
                                             const SizedBox(width: 8),
                                             const Expanded(child: Text('Peso (kg)', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey))),
                                             const SizedBox(width: 8),
-                                            const SizedBox(width: 48, child: Text('Terminou?', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey))),
+                                            const SizedBox(width: 48, child: Text('Feito', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey))),
                                             const SizedBox(width: 40),
                                           ],
                                         ),
@@ -882,6 +882,7 @@ class _WorkoutExecutionScreenState extends ConsumerState<WorkoutExecutionScreen>
                                                     labelText: 'Reps',
                                                     isDense: true,
                                                     border: OutlineInputBorder(),
+                                                    contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
                                                   ),
                                                   onChanged: (val) {
                                                     sets[setIndex] = ExerciseSet(
@@ -903,6 +904,7 @@ class _WorkoutExecutionScreenState extends ConsumerState<WorkoutExecutionScreen>
                                                     hintText: '00',
                                                     isDense: true,
                                                     border: const OutlineInputBorder(),
+                                                    contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
                                                   ),
                                                   onChanged: (val) {
                                                     sets[setIndex] = ExerciseSet(
@@ -914,13 +916,17 @@ class _WorkoutExecutionScreenState extends ConsumerState<WorkoutExecutionScreen>
                                                   },
                                                 ),
                                               ),
-                                              Checkbox(
-                                                value: isCompleted,
-                                                onChanged: (val) {
-                                                  setState(() {
-                                                    _completedSets[exercise.id!]![setIndex] = val ?? false;
-                                                  });
-                                                },
+                                              const SizedBox(width: 8),
+                                              SizedBox(
+                                                width: 48,
+                                                child: Checkbox(
+                                                  value: isCompleted,
+                                                  onChanged: (val) {
+                                                    setState(() {
+                                                      _completedSets[exercise.id!]![setIndex] = val ?? false;
+                                                    });
+                                                  },
+                                                ),
                                               ),
                                               IconButton(
                                                 icon: const Icon(Icons.delete, color: Colors.red),
