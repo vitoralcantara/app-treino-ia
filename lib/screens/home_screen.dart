@@ -214,8 +214,6 @@ class WorkoutTab extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final workouts = ref.watch(workoutListProvider);
     final sessions = ref.watch(sessionListProvider);
-    
-    final totalExercises = workouts.fold<int>(0, (sum, w) => sum + w.exercises.length);
 
     // Sugestão de próximo treino
     Workout? nextWorkout;
@@ -344,126 +342,6 @@ class WorkoutTab extends ConsumerWidget {
                     loading: () => const SizedBox.shrink(),
                     error: (_, _) => const SizedBox.shrink(),
                   ),
-
-                  Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Container(
-                      padding: const EdgeInsets.all(20.0),
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [Colors.blue.shade800, Colors.blue.shade500],
-                        ),
-                        borderRadius: BorderRadius.circular(20),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.blue.withValues(alpha: 0.4),
-                            blurRadius: 12,
-                            offset: const Offset(0, 6),
-                          ),
-                        ],
-                      ),
-                      child: Column(
-                        children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              const Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    'Sua Rotina ABC',
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 20,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                  Text(
-                                    'Total de exercícios na semana',
-                                    style: TextStyle(
-                                      color: Colors.white70,
-                                      fontSize: 13,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                                decoration: BoxDecoration(
-                                  color: Colors.white.withValues(alpha: 0.2),
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: Column(
-                                  children: [
-                                    Text(
-                                      '$totalExercises',
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 24,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                    const Text(
-                                      'Total',
-                                      style: TextStyle(
-                                        color: Colors.white70,
-                                        fontSize: 10,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                          if (nextWorkout != null) ...[
-                            const SizedBox(height: 20),
-                            const Divider(color: Colors.white24),
-                            const SizedBox(height: 10),
-                            Row(
-                              children: [
-                                const Icon(Icons.next_plan, color: Colors.white, size: 20),
-                                const SizedBox(width: 8),
-                                const Text(
-                                  'Sugestão para hoje:',
-                                  style: TextStyle(color: Colors.white70, fontSize: 14),
-                                ),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: Text(
-                                    nextWorkout.name,
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                                ElevatedButton(
-                                  onPressed: () {
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (context) => WorkoutExecutionScreen(workout: nextWorkout!),
-                                      ),
-                                    );
-                                  },
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: Colors.white,
-                                    foregroundColor: Colors.blue.shade800,
-                                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                                    minimumSize: const Size(0, 36),
-                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                                  ),
-                                  child: const Text('Iniciar', style: TextStyle(fontWeight: FontWeight.bold)),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ],
-                      ),
-                    ),
-                  ),
                   const Padding(
                     padding: EdgeInsets.symmetric(horizontal: 16.0),
                     child: Row(
@@ -481,6 +359,109 @@ class WorkoutTab extends ConsumerWidget {
                     itemCount: workouts.length,
                     itemBuilder: (context, index) {
                       final workout = workouts[index];
+                      final isNextWorkout = nextWorkout != null && workout.id == nextWorkout.id;
+
+                      if (isNextWorkout) {
+                        return Padding(
+                          padding: const EdgeInsets.all(16.0),
+                          child: Container(
+                            padding: const EdgeInsets.all(20.0),
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: [Colors.blue.shade800, Colors.blue.shade500],
+                              ),
+                              borderRadius: BorderRadius.circular(20),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.blue.withValues(alpha: 0.4),
+                                  blurRadius: 12,
+                                  offset: const Offset(0, 6),
+                                ),
+                              ],
+                            ),
+                            child: Column(
+                              children: [
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Row(
+                                            children: [
+                                              const Icon(Icons.next_plan, color: Colors.white, size: 20),
+                                              const SizedBox(width: 8),
+                                              const Text(
+                                                'Próximo Treino',
+                                                style: TextStyle(color: Colors.white70, fontSize: 14),
+                                              ),
+                                            ],
+                                          ),
+                                          const SizedBox(height: 8),
+                                          Text(
+                                            workout.name,
+                                            style: const TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 20,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                          Text(
+                                            '${workout.exercises.length} exercícios',
+                                            style: const TextStyle(
+                                              color: Colors.white70,
+                                              fontSize: 13,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    ElevatedButton(
+                                      onPressed: () {
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (context) => WorkoutExecutionScreen(workout: workout),
+                                          ),
+                                        );
+                                      },
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: Colors.white,
+                                        foregroundColor: Colors.blue.shade800,
+                                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                                        minimumSize: const Size(0, 36),
+                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                      ),
+                                      child: const Text('Iniciar', style: TextStyle(fontWeight: FontWeight.bold)),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 12),
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    IconButton(
+                                      icon: const Icon(Icons.edit_note, color: Colors.white70),
+                                      tooltip: 'Editar',
+                                      onPressed: () {
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (context) => WorkoutDetailsScreen(workoutId: workout.id!),
+                                          ),
+                                        );
+                                      },
+                                    ),
+                                    const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.white70),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      }
+
                       return Card(
                         margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                         elevation: 2,

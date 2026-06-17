@@ -1,10 +1,13 @@
+import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../data/database_helper.dart';
 import '../models/workout.dart';
 import '../models/exercise.dart';
 import '../models/workout_session.dart';
 import '../models/routine.dart';
 import 'backup_provider.dart';
+import '../services/notification_service.dart';
 
 final databaseProvider = Provider((ref) => DatabaseHelper.instance);
 
@@ -182,6 +185,138 @@ class SessionListNotifier extends Notifier<List<WorkoutSession>> {
 }
 
 final sessionListProvider = NotifierProvider<SessionListNotifier, List<WorkoutSession>>(SessionListNotifier.new);
+
+class WorkoutTimerNotifier extends Notifier<WorkoutTimerState> {
+  Timer? _timer;
+  static const String _restTimeKey = 'selected_rest_time';
+
+  @override
+  WorkoutTimerState build() {
+    _loadRestTimePreference();
+    return WorkoutTimerState.initial();
+  }
+
+  Future<void> _loadRestTimePreference() async {
+    final prefs = await SharedPreferences.getInstance();
+    state = state.copyWith(selectedRestTime: prefs.getInt(_restTimeKey) ?? 60);
+  }
+
+  void startTimer() {
+    if (state.isTimerRunning) return;
+    
+    state = state.copyWith(
+      isTimerRunning: true,
+      timerStartTime: DateTime.now().subtract(Duration(seconds: state.seconds)),
+    );
+
+    // Mostrar notificação em tempo real com o countdown
+    final remainingTime = state.selectedRestTime - state.seconds;
+    NotificationService().showActiveTimerNotification(remainingTime, state.selectedRestTime);
+
+    // Agendar notificação para o fim do tempo selecionado
+    NotificationService().scheduleRestNotification(state.selectedRestTime - state.seconds > 0 ? state.selectedRestTime - state.seconds : state.selectedRestTime);
+
+    _startPeriodicTimer();
+  }
+
+  void _startPeriodicTimer() {
+    _timer?.cancel();
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      final newSeconds = state.seconds + 1;
+      final remainingTime = state.selectedRestTime - newSeconds;
+
+      // Atualizar notificação em tempo real
+      if (remainingTime > 0) {
+        NotificationService().updateTimerNotification(remainingTime);
+      }
+
+      if (newSeconds >= state.selectedRestTime) {
+        pauseTimer();
+      } else {
+        state = state.copyWith(seconds: newSeconds);
+      }
+    });
+  }
+
+  void pauseTimer() {
+    _timer?.cancel();
+    NotificationService().cancelAllNotifications();
+    state = state.copyWith(
+      isTimerRunning: false,
+      timerStartTime: null,
+    );
+  }
+
+  void resetTimer() {
+    _timer?.cancel();
+    NotificationService().cancelAllNotifications();
+    state = WorkoutTimerState.initial().copyWith(selectedRestTime: state.selectedRestTime);
+  }
+
+  void updateRestTime(int newRestTime) {
+    state = state.copyWith(selectedRestTime: newRestTime);
+  }
+
+  void handleAppLifecycleResumed() {
+    if (state.isTimerRunning && state.timerStartTime != null) {
+      // Recalcular o tempo decorrido enquanto o app estava em segundo plano
+      final elapsedSeconds = DateTime.now().difference(state.timerStartTime!).inSeconds;
+      state = state.copyWith(seconds: elapsedSeconds);
+      final remainingTime = state.selectedRestTime - elapsedSeconds;
+
+      // Atualizar notificação com o tempo recalculado
+      if (remainingTime > 0) {
+        NotificationService().updateTimerNotification(remainingTime);
+      }
+
+      if (elapsedSeconds >= state.selectedRestTime) {
+        pauseTimer();
+      } else {
+        // Reiniciar o timer com o tempo atualizado
+        _startPeriodicTimer();
+      }
+    }
+  }
+}
+
+class WorkoutTimerState {
+  final int seconds;
+  final bool isTimerRunning;
+  final int selectedRestTime;
+  final DateTime? timerStartTime;
+
+  WorkoutTimerState({
+    required this.seconds,
+    required this.isTimerRunning,
+    required this.selectedRestTime,
+    this.timerStartTime,
+  });
+
+  factory WorkoutTimerState.initial() {
+    return WorkoutTimerState(
+      seconds: 0,
+      isTimerRunning: false,
+      selectedRestTime: 60,
+      timerStartTime: null,
+    );
+  }
+
+  WorkoutTimerState copyWith({
+    int? seconds,
+    bool? isTimerRunning,
+    int? selectedRestTime,
+    DateTime? timerStartTime,
+  }) {
+    return WorkoutTimerState(
+      seconds: seconds ?? this.seconds,
+      isTimerRunning: isTimerRunning ?? this.isTimerRunning,
+      selectedRestTime: selectedRestTime ?? this.selectedRestTime,
+      timerStartTime: timerStartTime ?? this.timerStartTime,
+    );
+  }
+}
+
+final workoutTimerProvider = NotifierProvider<WorkoutTimerNotifier, WorkoutTimerState>(WorkoutTimerNotifier.new);
 
 final routineProgressProvider = FutureProvider<Map<String, dynamic>>((ref) async {
   // Observar mudanças no histórico para atualizar o progresso automaticamente

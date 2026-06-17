@@ -9,8 +9,6 @@ import '../models/workout_session.dart';
 import '../models/exercise_set.dart';
 import '../models/exercise.dart';
 import '../providers/workout_provider.dart';
-import '../services/notification_service.dart';
-import '../data/database_helper.dart';
 
 class WorkoutExecutionScreen extends ConsumerStatefulWidget {
   final Workout workout;
@@ -26,14 +24,6 @@ class _WorkoutExecutionScreenState extends ConsumerState<WorkoutExecutionScreen>
   final Map<int, List<bool>> _completedSets = {}; // Controla quais séries foram concluídas
   final List<Exercise> _dynamicExercises = []; // Exercícios adicionados na hora
   bool _initialized = false;
-
-  // Variáveis do Temporizador de Descanso
-  Timer? _timer;
-  int _seconds = 0;
-  bool _isTimerRunning = false;
-  int _selectedRestTime = 60; // Tempo de descanso padrão: 60s
-  static const String _restTimeKey = 'selected_rest_time';
-  DateTime? _timerStartTime; // Timestamp quando o timer foi iniciado
   
   // Auto-save de pesos
   Timer? _autoSaveTimer;
@@ -44,13 +34,11 @@ class _WorkoutExecutionScreenState extends ConsumerState<WorkoutExecutionScreen>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _loadRestTimePreference();
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    _timer?.cancel();
     _autoSaveTimer?.cancel();
     
     // Tenta salvar pesos pendentes antes de fechar
@@ -58,97 +46,15 @@ class _WorkoutExecutionScreenState extends ConsumerState<WorkoutExecutionScreen>
       _savePendingWeights();
     }
     
-    NotificationService().cancelAllNotifications();
     super.dispose();
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     super.didChangeAppLifecycleState(state);
-    if (state == AppLifecycleState.resumed && _isTimerRunning && _timerStartTime != null) {
-      // Recalcular o tempo decorrido enquanto o app estava em segundo plano
-      final elapsedSeconds = DateTime.now().difference(_timerStartTime!).inSeconds;
-      setState(() {
-        _seconds = elapsedSeconds;
-        final remainingTime = _selectedRestTime - _seconds;
-
-        // Atualizar notificação com o tempo recalculado
-        if (remainingTime > 0) {
-          NotificationService().updateTimerNotification(remainingTime);
-        }
-
-        if (_seconds >= _selectedRestTime) {
-          _pauseTimer();
-        } else {
-          // Reiniciar o timer com o tempo atualizado
-          _startPeriodicTimer();
-        }
-      });
+    if (state == AppLifecycleState.resumed) {
+      ref.read(workoutTimerProvider.notifier).handleAppLifecycleResumed();
     }
-  }
-
-  Future<void> _loadRestTimePreference() async {
-    final prefs = await SharedPreferences.getInstance();
-    if (mounted) {
-      setState(() {
-        _selectedRestTime = prefs.getInt(_restTimeKey) ?? 60;
-      });
-    }
-  }
-
-  void _startTimer() {
-    if (_isTimerRunning) return;
-    setState(() {
-      _isTimerRunning = true;
-      _timerStartTime = DateTime.now().subtract(Duration(seconds: _seconds));
-    });
-
-    // Mostrar notificação em tempo real com o countdown
-    final remainingTime = _selectedRestTime - _seconds;
-    NotificationService().showActiveTimerNotification(remainingTime, _selectedRestTime);
-
-    // Agendar notificação para o fim do tempo selecionado
-    NotificationService().scheduleRestNotification(_selectedRestTime - _seconds > 0 ? _selectedRestTime - _seconds : _selectedRestTime);
-
-    _startPeriodicTimer();
-  }
-
-  void _startPeriodicTimer() {
-    _timer?.cancel();
-    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      setState(() {
-        _seconds++;
-        final remainingTime = _selectedRestTime - _seconds;
-
-        // Atualizar notificação em tempo real
-        if (remainingTime > 0) {
-          NotificationService().updateTimerNotification(remainingTime);
-        }
-
-        if (_seconds >= _selectedRestTime) {
-          _pauseTimer();
-        }
-      });
-    });
-  }
-
-  void _pauseTimer() {
-    _timer?.cancel();
-    NotificationService().cancelAllNotifications();
-    setState(() {
-      _isTimerRunning = false;
-      _timerStartTime = null;
-    });
-  }
-
-  void _resetTimer() {
-    _timer?.cancel();
-    NotificationService().cancelAllNotifications();
-    setState(() {
-      _seconds = 0;
-      _isTimerRunning = false;
-      _timerStartTime = null;
-    });
   }
 
   String _formatTime(int totalSeconds) {
@@ -367,6 +273,8 @@ class _WorkoutExecutionScreenState extends ConsumerState<WorkoutExecutionScreen>
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Treino concluído e salvo no histórico!')),
       );
+      // Resetar o timer quando o treino é finalizado
+      ref.read(workoutTimerProvider.notifier).resetTimer();
       Navigator.pop(context);
     }
   }
@@ -610,6 +518,8 @@ class _WorkoutExecutionScreenState extends ConsumerState<WorkoutExecutionScreen>
 
   @override
   Widget build(BuildContext context) {
+    final timerState = ref.watch(workoutTimerProvider);
+    
     // Agrupar exercícios por groupId para exibição
     final List<List<Exercise>> groupedExercises = [];
     String? currentGroupId;
@@ -666,7 +576,7 @@ class _WorkoutExecutionScreenState extends ConsumerState<WorkoutExecutionScreen>
                         children: [
                           DropdownButtonHideUnderline(
                             child: DropdownButton<int>(
-                              value: _selectedRestTime,
+                              value: timerState.selectedRestTime,
                               isDense: true,
                               style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.blueGrey),
                               items: [30, 45, 60, 90, 120].map((int value) {
@@ -675,23 +585,23 @@ class _WorkoutExecutionScreenState extends ConsumerState<WorkoutExecutionScreen>
                                   child: Text('${value}s DESCANSO'),
                                 );
                               }).toList(),
-                              onChanged: _isTimerRunning ? null : (newValue) async {
-                                setState(() {
-                                  _selectedRestTime = newValue!;
-                                });
-                                // Salvar preferência
-                                final prefs = await SharedPreferences.getInstance();
-                                await prefs.setInt(_restTimeKey, newValue!);
+                              onChanged: timerState.isTimerRunning ? null : (newValue) async {
+                                if (newValue != null) {
+                                  ref.read(workoutTimerProvider.notifier).updateRestTime(newValue);
+                                  // Salvar preferência
+                                  final prefs = await SharedPreferences.getInstance();
+                                  await prefs.setInt('selected_rest_time', newValue);
+                                }
                               },
                             ),
                           ),
                           Text(
-                            _formatTime(_seconds),
+                            _formatTime(timerState.seconds),
                             style: TextStyle(
                               fontSize: 28, 
                               fontWeight: FontWeight.bold, 
                               fontFamily: 'monospace',
-                              color: _seconds >= _selectedRestTime ? Colors.redAccent : null,
+                              color: timerState.seconds >= timerState.selectedRestTime ? Colors.redAccent : null,
                             ),
                           ),
                         ],
@@ -700,9 +610,9 @@ class _WorkoutExecutionScreenState extends ConsumerState<WorkoutExecutionScreen>
                   ),
                   Row(
                     children: [
-                      if (!_isTimerRunning)
+                      if (!timerState.isTimerRunning)
                         IconButton.filled(
-                          onPressed: _startTimer,
+                          onPressed: () => ref.read(workoutTimerProvider.notifier).startTimer(),
                           icon: const Icon(Icons.play_arrow),
                           style: IconButton.styleFrom(
                             backgroundColor: Colors.green,
@@ -711,7 +621,7 @@ class _WorkoutExecutionScreenState extends ConsumerState<WorkoutExecutionScreen>
                         )
                       else
                         IconButton.filled(
-                          onPressed: _pauseTimer,
+                          onPressed: () => ref.read(workoutTimerProvider.notifier).pauseTimer(),
                           icon: const Icon(Icons.pause),
                           style: IconButton.styleFrom(
                             backgroundColor: Colors.orange,
@@ -720,7 +630,7 @@ class _WorkoutExecutionScreenState extends ConsumerState<WorkoutExecutionScreen>
                         ),
                       const SizedBox(width: 8),
                       IconButton.outlined(
-                        onPressed: _resetTimer,
+                        onPressed: () => ref.read(workoutTimerProvider.notifier).resetTimer(),
                         icon: const Icon(Icons.refresh),
                         style: IconButton.styleFrom(minimumSize: const Size(40, 40)),
                       ),
