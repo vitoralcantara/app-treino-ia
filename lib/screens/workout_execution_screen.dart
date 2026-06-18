@@ -142,7 +142,7 @@ class _WorkoutExecutionScreenState extends ConsumerState<WorkoutExecutionScreen>
           }
           return ExerciseSet(
             reps: reps,
-            weight: 0,
+            weight: '0',
             exerciseId: exerciseId,
             technique: exercise.suggestedTechnique,
           );
@@ -171,7 +171,7 @@ class _WorkoutExecutionScreenState extends ConsumerState<WorkoutExecutionScreen>
         _setsByExercise[exerciseId]!.add(
           ExerciseSet(
             reps: 10, // Valor padrão
-            weight: 0,
+            weight: '0',
             exerciseId: exerciseId,
             technique: null,
           ),
@@ -183,7 +183,7 @@ class _WorkoutExecutionScreenState extends ConsumerState<WorkoutExecutionScreen>
         _setsByExercise[exerciseId]!.add(
           ExerciseSet(
             reps: lastSet.reps,
-            weight: 0, // Nova série começa sem peso
+            weight: '0', // Nova série começa sem peso
             exerciseId: exerciseId,
             technique: lastSet.technique,
           ),
@@ -770,12 +770,11 @@ class _WorkoutExecutionScreenState extends ConsumerState<WorkoutExecutionScreen>
                                             children: [
                                               const SizedBox(width: 28, child: Text('Série', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey))),
                                               const SizedBox(width: 8),
-                                              const Expanded(child: Text('Reps', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey))),
+                                              const SizedBox(width: 65, child: Text('Reps', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey))),
                                               const SizedBox(width: 8),
                                               const Expanded(child: Text('Peso (kg)', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey))),
                                               const SizedBox(width: 8),
                                               const SizedBox(width: 48, child: Text('Feito', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey))),
-                                              const SizedBox(width: 40),
                                             ],
                                           ),
                                         ),
@@ -786,96 +785,116 @@ class _WorkoutExecutionScreenState extends ConsumerState<WorkoutExecutionScreen>
                                           ExerciseSet set = entry.value;
                                           bool isCompleted = _completedSets[exercise.id!]![setIndex];
 
-                                          return Container(
-                                            decoration: BoxDecoration(
-                                              color: isCompleted ? Colors.green.withValues(alpha: 0.1) : Colors.transparent,
-                                              borderRadius: BorderRadius.circular(8),
-                                            ),
-                                            padding: const EdgeInsets.symmetric(vertical: 4.0, horizontal: 4.0),
-                                            margin: const EdgeInsets.symmetric(vertical: 2.0),
-                                            child: Row(
-                                              children: [
-                                                GestureDetector(
-                                                  onTap: () => _toggleTechnique(exercise.id!, setIndex),
-                                                  child: CircleAvatar(
-                                                    radius: 14,
-                                                    backgroundColor: isCompleted ? Colors.green : Colors.grey.shade700,
-                                                    child: set.technique == null
-                                                      ? Text('${setIndex + 1}', style: const TextStyle(fontSize: 12, color: Colors.white))
-                                                      : Icon(_getTechniqueIcon(set.technique!), size: 14, color: Colors.white),
-                                                  ),
-                                                ),
-                                                const SizedBox(width: 8),
-                                                Expanded(
-                                                  child: TextFormField(
-                                                    initialValue: set.reps.toString(),
-                                                    keyboardType: TextInputType.number,
-                                                    decoration: const InputDecoration(
-                                                      labelText: 'Reps',
-                                                      isDense: true,
-                                                      border: OutlineInputBorder(),
-                                                      contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                                          return GestureDetector(
+                                            onLongPress: () async {
+                                              final confirm = await showDialog<bool>(
+                                                context: context,
+                                                builder: (context) => AlertDialog(
+                                                  title: const Text('Remover Série'),
+                                                  content: const Text('Deseja realmente remover esta série?'),
+                                                  actions: [
+                                                    TextButton(
+                                                      onPressed: () => Navigator.pop(context, false),
+                                                      child: const Text('Cancelar'),
                                                     ),
-                                                    onChanged: (val) {
-                                                      sets[setIndex] = ExerciseSet(
-                                                        reps: int.tryParse(val) ?? 0,
-                                                        weight: sets[setIndex].weight,
-                                                        exerciseId: exercise.id,
-                                                        technique: sets[setIndex].technique,
-                                                      );
-                                                      // Agendar auto-save
-                                                      _scheduleAutoSave(exercise.id!);
-                                                    },
-                                                  ),
-                                                ),
-                                                const SizedBox(width: 8),
-                                                Expanded(
-                                                  child: TextFormField(
-                                                    initialValue: set.weight == 0 ? '' : set.weight.toString(),
-                                                    keyboardType: TextInputType.number,
-                                                    decoration: InputDecoration(
-                                                      labelText: 'Peso (kg)',
-                                                      hintText: '00',
-                                                      isDense: true,
-                                                      border: const OutlineInputBorder(),
-                                                      contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                                                    ElevatedButton(
+                                                      onPressed: () => Navigator.pop(context, true),
+                                                      style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
+                                                      child: const Text('Remover'),
                                                     ),
-                                                    onChanged: (val) {
-                                                      sets[setIndex] = ExerciseSet(
-                                                        reps: sets[setIndex].reps,
-                                                        weight: val.isEmpty ? 0 : double.tryParse(val) ?? 0,
-                                                        exerciseId: exercise.id,
-                                                        technique: sets[setIndex].technique,
-                                                      );
-                                                      // Agendar auto-save dos pesos
-                                                      _scheduleAutoSave(exercise.id!);
-                                                    },
+                                                  ],
+                                                ),
+                                              );
+
+                                              if (confirm == true) {
+                                                setState(() {
+                                                  sets.removeAt(setIndex);
+                                                  _completedSets[exercise.id!]!.removeAt(setIndex);
+                                                });
+                                                _scheduleAutoSave(exercise.id!);
+                                              }
+                                            },
+                                            child: Container(
+                                              decoration: BoxDecoration(
+                                                color: isCompleted ? Colors.green.withValues(alpha: 0.1) : Colors.transparent,
+                                                borderRadius: BorderRadius.circular(8),
+                                              ),
+                                              padding: const EdgeInsets.symmetric(vertical: 4.0, horizontal: 4.0),
+                                              margin: const EdgeInsets.symmetric(vertical: 2.0),
+                                              child: Row(
+                                                children: [
+                                                  GestureDetector(
+                                                    onTap: () => _toggleTechnique(exercise.id!, setIndex),
+                                                    child: CircleAvatar(
+                                                      radius: 14,
+                                                      backgroundColor: isCompleted ? Colors.green : Colors.grey.shade700,
+                                                      child: set.technique == null
+                                                        ? Text('${setIndex + 1}', style: const TextStyle(fontSize: 12, color: Colors.white))
+                                                        : Icon(_getTechniqueIcon(set.technique!), size: 14, color: Colors.white),
+                                                    ),
                                                   ),
-                                                ),
-                                                const SizedBox(width: 8),
-                                                SizedBox(
-                                                  width: 48,
-                                                  child: Checkbox(
-                                                    value: isCompleted,
-                                                    onChanged: (val) {
-                                                      setState(() {
-                                                        _completedSets[exercise.id!]![setIndex] = val ?? false;
-                                                      });
-                                                    },
+                                                  const SizedBox(width: 8),
+                                                  SizedBox(
+                                                    width: 65,
+                                                    child: TextFormField(
+                                                      initialValue: set.reps.toString(),
+                                                      keyboardType: TextInputType.number,
+                                                      decoration: const InputDecoration(
+                                                        labelText: 'Reps',
+                                                        isDense: true,
+                                                        border: OutlineInputBorder(),
+                                                        contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                                                      ),
+                                                      onChanged: (val) {
+                                                        sets[setIndex] = ExerciseSet(
+                                                          reps: int.tryParse(val) ?? 0,
+                                                          weight: sets[setIndex].weight,
+                                                          exerciseId: exercise.id,
+                                                          technique: sets[setIndex].technique,
+                                                        );
+                                                        // Agendar auto-save
+                                                        _scheduleAutoSave(exercise.id!);
+                                                      },
+                                                    ),
                                                   ),
-                                                ),
-                                                IconButton(
-                                                  icon: const Icon(Icons.delete, color: Colors.red),
-                                                  onPressed: () {
-                                                    setState(() {
-                                                      sets.removeAt(setIndex);
-                                                      _completedSets[exercise.id!]!.removeAt(setIndex);
-                                                    });
-                                                    // Agendar auto-save ao remover série
-                                                    _scheduleAutoSave(exercise.id!);
-                                                  },
-                                                ),
-                                              ],
+                                                  const SizedBox(width: 8),
+                                                  Expanded(
+                                                    child: TextFormField(
+                                                      initialValue: set.weight == '0' ? '' : set.weight,
+                                                      keyboardType: TextInputType.text,
+                                                      decoration: const InputDecoration(
+                                                        labelText: 'Peso (kg)',
+                                                        hintText: '00',
+                                                        isDense: true,
+                                                        border: OutlineInputBorder(),
+                                                        contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                                                      ),
+                                                      onChanged: (val) {
+                                                        sets[setIndex] = ExerciseSet(
+                                                          reps: sets[setIndex].reps,
+                                                          weight: val.isEmpty ? '0' : val,
+                                                          exerciseId: exercise.id,
+                                                          technique: sets[setIndex].technique,
+                                                        );
+                                                        // Agendar auto-save dos pesos
+                                                        _scheduleAutoSave(exercise.id!);
+                                                      },
+                                                    ),
+                                                  ),
+                                                  const SizedBox(width: 8),
+                                                  SizedBox(
+                                                    width: 48,
+                                                    child: Checkbox(
+                                                      value: isCompleted,
+                                                      onChanged: (val) {
+                                                        setState(() {
+                                                          _completedSets[exercise.id!]![setIndex] = val ?? false;
+                                                        });
+                                                      },
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
                                             ),
                                           );
                                         }),

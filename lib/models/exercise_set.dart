@@ -3,7 +3,7 @@ class ExerciseSet {
   final int? exerciseId;
   final int? workoutSessionId;
   final int reps;
-  final double weight;
+  final String weight;
   final DateTime? timestamp;
   final String? technique; // Novo: Técnica aplicada (drop_set, rest_pause, etc)
 
@@ -23,7 +23,7 @@ class ExerciseSet {
       exerciseId: (json['exerciseId'] ?? json['exercise_id']) as int?,
       workoutSessionId: (json['workoutSessionId'] ?? json['session_id']) as int?,
       reps: json['reps'] as int,
-      weight: (json['weight'] as num).toDouble(),
+      weight: json['weight']?.toString() ?? '0',
       timestamp: json['timestamp'] != null
           ? DateTime.parse(json['timestamp'] as String)
           : null,

@@ -385,36 +385,47 @@ class WorkoutTab extends ConsumerWidget {
                                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                   children: [
                                     Expanded(
-                                      child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          Row(
-                                            children: [
-                                              const Icon(Icons.next_plan, color: Colors.white, size: 20),
-                                              const SizedBox(width: 8),
-                                              const Text(
-                                                'Próximo Treino',
-                                                style: TextStyle(color: Colors.white70, fontSize: 14),
+                                      child: GestureDetector(
+                                        behavior: HitTestBehavior.opaque,
+                                        onTap: () {
+                                          Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (context) => WorkoutExecutionScreen(workout: workout),
+                                            ),
+                                          );
+                                        },
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Row(
+                                              children: [
+                                                const Icon(Icons.next_plan, color: Colors.white, size: 20),
+                                                const SizedBox(width: 8),
+                                                const Text(
+                                                  'Próximo Treino',
+                                                  style: TextStyle(color: Colors.white70, fontSize: 14),
+                                                ),
+                                              ],
+                                            ),
+                                            const SizedBox(height: 8),
+                                            Text(
+                                              workout.name,
+                                              style: const TextStyle(
+                                                color: Colors.white,
+                                                fontSize: 20,
+                                                fontWeight: FontWeight.bold,
                                               ),
-                                            ],
-                                          ),
-                                          const SizedBox(height: 8),
-                                          Text(
-                                            workout.name,
-                                            style: const TextStyle(
-                                              color: Colors.white,
-                                              fontSize: 20,
-                                              fontWeight: FontWeight.bold,
                                             ),
-                                          ),
-                                          Text(
-                                            '${workout.exercises.length} exercícios',
-                                            style: const TextStyle(
-                                              color: Colors.white70,
-                                              fontSize: 13,
+                                            Text(
+                                              '${workout.exercises.length} exercícios',
+                                              style: const TextStyle(
+                                                color: Colors.white70,
+                                                fontSize: 13,
+                                              ),
                                             ),
-                                          ),
-                                        ],
+                                          ],
+                                        ),
                                       ),
                                     ),
                                     ElevatedButton(

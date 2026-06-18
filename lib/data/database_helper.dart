@@ -26,7 +26,7 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 14, // Aumentei a versão para 14 para criar tabela exercise_default_weights
+      version: 15, // Aumentei a versão para 15 para mudar weight de REAL para TEXT
       onCreate: _createDB,
       onUpgrade: _upgradeDB,
     );
@@ -129,6 +129,46 @@ class DatabaseHelper {
         await db.execute('CREATE INDEX IF NOT EXISTS idx_exercise_default_weights_exercise_id ON exercise_default_weights(exercise_id)');
       } catch (_) {}
     }
+    if (oldVersion < 15) {
+      // Migração de REAL para TEXT para permitir texto no peso
+      await db.transaction((txn) async {
+        // Para exercise_sets
+        await txn.execute('ALTER TABLE exercise_sets RENAME TO exercise_sets_old');
+        await txn.execute('''
+          CREATE TABLE exercise_sets (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            session_id INTEGER NOT NULL,
+            exercise_id INTEGER NOT NULL,
+            reps INTEGER NOT NULL,
+            weight TEXT NOT NULL,
+            timestamp TEXT NOT NULL,
+            technique TEXT,
+            FOREIGN KEY (session_id) REFERENCES workout_sessions (id) ON DELETE CASCADE,
+            FOREIGN KEY (exercise_id) REFERENCES exercises (id) ON DELETE CASCADE
+          )
+        ''');
+        await txn.execute('INSERT INTO exercise_sets SELECT * FROM exercise_sets_old');
+        await txn.execute('DROP TABLE exercise_sets_old');
+
+        // Para exercise_default_weights
+        await txn.execute('ALTER TABLE exercise_default_weights RENAME TO exercise_default_weights_old');
+        await txn.execute('''
+          CREATE TABLE exercise_default_weights (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            exercise_id INTEGER NOT NULL,
+            reps INTEGER NOT NULL,
+            weight TEXT NOT NULL,
+            position INTEGER NOT NULL,
+            technique TEXT,
+            updated_at TEXT NOT NULL,
+            FOREIGN KEY (exercise_id) REFERENCES exercises (id) ON DELETE CASCADE
+          )
+        ''');
+        await txn.execute('INSERT INTO exercise_default_weights SELECT * FROM exercise_default_weights_old');
+        await txn.execute('DROP TABLE exercise_default_weights_old');
+        await txn.execute('CREATE INDEX idx_exercise_default_weights_exercise_id ON exercise_default_weights(exercise_id)');
+      });
+    }
   }
 
   Future _createDB(Database db, int version) async {
@@ -136,7 +176,6 @@ class DatabaseHelper {
     const textType = 'TEXT NOT NULL';
     const textTypeNullable = 'TEXT';
     const intType = 'INTEGER NOT NULL';
-    const doubleType = 'REAL NOT NULL';
 
     await db.execute('''
       CREATE TABLE exercises (
@@ -205,7 +244,7 @@ class DatabaseHelper {
         session_id $intType,
         exercise_id $intType,
         reps $intType,
-        weight $doubleType,
+        weight TEXT NOT NULL,
         timestamp $textType,
         technique TEXT,
         FOREIGN KEY (session_id) REFERENCES workout_sessions (id) ON DELETE CASCADE,
@@ -218,7 +257,7 @@ class DatabaseHelper {
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         exercise_id INTEGER NOT NULL,
         reps INTEGER NOT NULL,
-        weight REAL NOT NULL,
+        weight TEXT NOT NULL,
         position INTEGER NOT NULL,
         technique TEXT,
         updated_at TEXT NOT NULL,
@@ -671,7 +710,7 @@ class DatabaseHelper {
     return List.generate(maps.length, (i) {
       return ExerciseSet(
         reps: maps[i]['reps'],
-        weight: maps[i]['weight'],
+        weight: maps[i]['weight'].toString(),
         exerciseId: exerciseId,
         technique: maps[i]['technique'],
       );
@@ -696,7 +735,7 @@ class DatabaseHelper {
       result.putIfAbsent(id, () => []);
       result[id]!.add(ExerciseSet(
         reps: map['reps'],
-        weight: map['weight'] is int ? (map['weight'] as int).toDouble() : map['weight'],
+        weight: map['weight'].toString(),
         exerciseId: id,
         technique: map['technique'],
       ));

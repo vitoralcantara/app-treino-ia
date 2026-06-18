@@ -1,4 +1,6 @@
 import 'dart:io';
+import 'dart:async';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../services/google_drive_service.dart';
 import 'settings_provider.dart';
@@ -47,16 +49,42 @@ class BackupState {
   }
 }
 
-class BackupNotifier extends Notifier<BackupState> {
+class BackupNotifier extends Notifier<BackupState> with WidgetsBindingObserver {
   final GoogleDriveService _driveService = GoogleDriveService();
   DateTime? _lastManualSyncTime;
   static const _minSyncInterval = Duration(minutes: 1);
+  Timer? _syncTimer;
 
   @override
   BackupState build() {
-    // Inicialização assíncrona sem modificar o estado durante o build
+    // Inicialização assíncrona
     _init();
+    
+    // Configurar observador de ciclo de vida
+    WidgetsBinding.instance.addObserver(this);
+    
+    // Observar mudanças no intervalo de sincronização para atualizar o timer
+    ref.listen(settingsProvider.select((s) => s.syncIntervalMinutes), (prev, next) {
+      if (state.userEmail != null) {
+        _startSyncTimer();
+      }
+    });
+
+    // Limpar ao descartar o provider
+    ref.onDispose(() {
+      WidgetsBinding.instance.removeObserver(this);
+      _syncTimer?.cancel();
+    });
+
     return BackupState();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      // Tenta sincronizar ao retomar o app
+      _tryAutoSync(force: true);
+    }
   }
 
   Future<void> _init() async {
@@ -68,15 +96,28 @@ class BackupNotifier extends Notifier<BackupState> {
           userEmail: account.email,
           lastBackupDate: lastBackup,
         );
-        // Tenta sincronizar automaticamente ao iniciar se estiver habilitado
+        // Tenta sincronizar automaticamente ao iniciar
         _tryAutoSync();
+        
+        // Iniciar timer periódico
+        _startSyncTimer();
       }
     } catch (e) {
       // Erro silencioso durante inicialização
     }
   }
 
-  Future<void> _tryAutoSync() async {
+  void _startSyncTimer() {
+    _syncTimer?.cancel();
+    final settings = ref.read(settingsProvider);
+    
+    // Timer para verificar mudanças periodicamente
+    _syncTimer = Timer.periodic(Duration(minutes: settings.syncIntervalMinutes), (timer) {
+      _tryAutoSync();
+    });
+  }
+
+  Future<void> _tryAutoSync({bool force = false}) async {
     try {
       final settings = ref.read(settingsProvider);
       
@@ -86,23 +127,25 @@ class BackupNotifier extends Notifier<BackupState> {
       // Verifica se está conectado ao Google Drive
       if (state.userEmail == null) return;
       
-      // Verifica throttling - não sincroniza se foi sincronizado recentemente
-      if (_lastManualSyncTime != null) {
-        final timeSinceLastSync = DateTime.now().difference(_lastManualSyncTime!);
-        if (timeSinceLastSync < _minSyncInterval) return;
-      }
-      
-      // Verifica intervalo configurado
-      if (state.lastSyncAttempt != null) {
-        final timeSinceLastAttempt = DateTime.now().difference(state.lastSyncAttempt!);
-        final configuredInterval = Duration(minutes: settings.syncIntervalMinutes);
-        if (timeSinceLastAttempt < configuredInterval) return;
+      if (!force) {
+        // Verifica throttling - não sincroniza se foi sincronizado recentemente manualmente
+        if (_lastManualSyncTime != null) {
+          final timeSinceLastSync = DateTime.now().difference(_lastManualSyncTime!);
+          if (timeSinceLastSync < _minSyncInterval) return;
+        }
+        
+        // Verifica intervalo configurado
+        if (state.lastSyncAttempt != null) {
+          final timeSinceLastAttempt = DateTime.now().difference(state.lastSyncAttempt!);
+          final configuredInterval = Duration(minutes: settings.syncIntervalMinutes);
+          if (timeSinceLastAttempt < configuredInterval) return;
+        }
       }
       
       // Executa sincronização automática
       await _performAutoSync();
     } catch (e) {
-      // Erro ao ler settings ou durante sync, ignora silenciosamente
+      // Erro silencioso
     }
   }
 
@@ -124,10 +167,10 @@ class BackupNotifier extends Notifier<BackupState> {
         if (localLastModified != null) {
           final timeDifference = cloudBackupDate.difference(localLastModified);
           
-          // Se a nuvem é mais recente por mais de 5 minutos, baixa
-          // Se local é mais recente por mais de 5 minutos, sobe
-          // Se a diferença é pequena, assume que são iguais e não faz nada
-          if (timeDifference.abs() > const Duration(minutes: 5)) {
+          // Se a nuvem é mais recente por mais de 1 minuto, baixa
+          // Se local é mais recente por mais de 1 minuto, sobe
+          // Reduzi de 5 para 1 minuto para ser mais responsivo entre dispositivos
+          if (timeDifference.abs() > const Duration(minutes: 1)) {
             if (timeDifference.isNegative) {
               // Local é mais recente, faz upload
               await _driveService.uploadBackup();
@@ -146,8 +189,7 @@ class BackupNotifier extends Notifier<BackupState> {
       final lastBackup = await _driveService.getLatestBackupDate();
       state = state.copyWith(lastBackupDate: lastBackup);
     } catch (e) {
-      // Em caso de erro na sincronização automática, não mostra erro para o usuário
-      // Apenas registra silenciosamente
+      // Erro silencioso
     } finally {
       state = state.copyWith(isAutoSyncing: false);
     }
@@ -167,7 +209,7 @@ class BackupNotifier extends Notifier<BackupState> {
   }
 
   void triggerAutoSync() {
-    _tryAutoSync();
+    _tryAutoSync(force: true);
   }
 
   Future<bool> signIn() async {
@@ -180,7 +222,8 @@ class BackupNotifier extends Notifier<BackupState> {
         lastBackupDate: lastBackup,
         isConnecting: false,
       );
-      _tryAutoSync();
+      _tryAutoSync(force: true);
+      _startSyncTimer();
       return true;
     } else {
       state = state.copyWith(isConnecting: false, errorMessage: 'Falha ao conectar com Google');
@@ -189,6 +232,7 @@ class BackupNotifier extends Notifier<BackupState> {
   }
 
   Future<void> signOut() async {
+    _syncTimer?.cancel();
     await _driveService.signOut();
     state = BackupState();
     _lastManualSyncTime = null;
