@@ -499,6 +499,18 @@ class WorkoutTab extends ConsumerWidget {
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               IconButton(
+                                icon: const Icon(Icons.play_circle_fill, color: Colors.green),
+                                tooltip: 'Iniciar',
+                                onPressed: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => WorkoutExecutionScreen(workout: workout, isViewingOnly: false),
+                                    ),
+                                  );
+                                },
+                              ),
+                              IconButton(
                                 icon: const Icon(Icons.edit_note, color: Colors.blueGrey),
                                 tooltip: 'Editar',
                                 onPressed: () {
@@ -517,7 +529,7 @@ class WorkoutTab extends ConsumerWidget {
                             Navigator.push(
                               context,
                               MaterialPageRoute(
-                                builder: (context) => WorkoutExecutionScreen(workout: workout),
+                                builder: (context) => WorkoutExecutionScreen(workout: workout, isViewingOnly: true),
                               ),
                             );
                           },

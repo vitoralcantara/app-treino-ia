@@ -1,4 +1,6 @@
 import 'dart:async';
+import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:receive_sharing_intent/receive_sharing_intent.dart';
 import '../services/backup_service.dart';
@@ -38,28 +40,36 @@ class ShareReceiverNotifier extends Notifier<ShareReceiverState> {
 
   @override
   ShareReceiverState build() {
-    // Iniciar monitoramento de intents quando o provider é criado
-    _startMonitoring();
+    // Iniciar monitoramento de intents quando o provider é criado, mas apenas em plataformas suportadas
+    if (!kIsWeb && (Platform.isAndroid || Platform.isIOS)) {
+      _startMonitoring();
+    }
     return ShareReceiverState();
   }
 
   void _startMonitoring() {
-    // Monitorar intents enquanto o app está rodando
-    _intentSubscription = ReceiveSharingIntent.instance.getMediaStream().listen(
-      (List<SharedMediaFile> files) {
-        _processSharedFiles(files);
-      },
-      onError: (error) {
-        state = state.copyWith(lastError: 'Erro ao receber arquivo: $error');
-      },
-    );
+    try {
+      // Monitorar intents enquanto o app está rodando
+      _intentSubscription = ReceiveSharingIntent.instance.getMediaStream().listen(
+        (List<SharedMediaFile> files) {
+          _processSharedFiles(files);
+        },
+        onError: (error) {
+          state = state.copyWith(lastError: 'Erro ao receber arquivo: $error');
+        },
+      );
 
-    // Verificar se o app foi aberto através de um intent (cold start)
-    ReceiveSharingIntent.instance.getInitialMedia().then((List<SharedMediaFile> files) {
-      if (files.isNotEmpty) {
-        _processSharedFiles(files);
-      }
-    });
+      // Verificar se o app foi aberto através de um intent (cold start)
+      ReceiveSharingIntent.instance.getInitialMedia().then((List<SharedMediaFile> files) {
+        if (files.isNotEmpty) {
+          _processSharedFiles(files);
+        }
+      }).catchError((e) {
+        debugPrint('Erro ao buscar mídia inicial: $e');
+      });
+    } catch (e) {
+      debugPrint('ReceiveSharingIntent não suportado nesta plataforma: $e');
+    }
   }
 
   Future<void> _processSharedFiles(List<SharedMediaFile> files) async {

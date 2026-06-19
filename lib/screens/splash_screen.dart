@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../providers/workout_provider.dart';
 import '../providers/share_receiver_provider.dart';
 import 'home_screen.dart';
+import 'workout_execution_screen.dart';
 
 class SplashScreen extends ConsumerStatefulWidget {
   const SplashScreen({super.key});
@@ -37,11 +39,30 @@ class _SplashScreenState extends ConsumerState<SplashScreen> with SingleTickerPr
     );
 
     _controller.forward().then((_) {
-      Future.delayed(const Duration(milliseconds: 500), () {
+      Future.delayed(const Duration(milliseconds: 500), () async {
         if (mounted) {
-          Navigator.of(context).pushReplacement(
-            MaterialPageRoute(builder: (context) => const HomeScreen()),
-          );
+          final prefs = await SharedPreferences.getInstance();
+          final activeWorkoutId = prefs.getInt('active_workout_id');
+          
+          if (activeWorkoutId != null && mounted) {
+            // Se houver um treino ativo, tentamos encontrá-lo
+            final workouts = ref.read(workoutListProvider);
+            final activeWorkout = workouts.where((w) => w.id == activeWorkoutId).firstOrNull;
+            
+            if (activeWorkout != null) {
+              Navigator.of(context).pushReplacement(
+                MaterialPageRoute(builder: (context) => WorkoutExecutionScreen(workout: activeWorkout)),
+              );
+            } else {
+              Navigator.of(context).pushReplacement(
+                MaterialPageRoute(builder: (context) => const HomeScreen()),
+              );
+            }
+          } else if (mounted) {
+            Navigator.of(context).pushReplacement(
+              MaterialPageRoute(builder: (context) => const HomeScreen()),
+            );
+          }
           
           // Verificar se houve importação automática e mostrar mensagem
           _checkAutoImportResult();

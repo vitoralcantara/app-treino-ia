@@ -12,8 +12,13 @@ import '../providers/workout_provider.dart';
 
 class WorkoutExecutionScreen extends ConsumerStatefulWidget {
   final Workout workout;
+  final bool isViewingOnly;
 
-  const WorkoutExecutionScreen({super.key, required this.workout});
+  const WorkoutExecutionScreen({
+    super.key, 
+    required this.workout,
+    this.isViewingOnly = false,
+  });
 
   @override
   ConsumerState<WorkoutExecutionScreen> createState() => _WorkoutExecutionScreenState();
@@ -24,6 +29,7 @@ class _WorkoutExecutionScreenState extends ConsumerState<WorkoutExecutionScreen>
   final Map<int, List<bool>> _completedSets = {}; // Controla quais séries foram concluídas
   final List<Exercise> _dynamicExercises = []; // Exercícios adicionados na hora
   bool _initialized = false;
+  late bool _isViewingMode;
   
   // Auto-save de pesos
   Timer? _autoSaveTimer;
@@ -33,7 +39,24 @@ class _WorkoutExecutionScreenState extends ConsumerState<WorkoutExecutionScreen>
   @override
   void initState() {
     super.initState();
+    _isViewingMode = widget.isViewingOnly;
     WidgetsBinding.instance.addObserver(this);
+    
+    if (!_isViewingMode) {
+      _setActiveWorkout();
+    }
+  }
+
+  Future<void> _setActiveWorkout() async {
+    if (widget.workout.id != null) {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setInt('active_workout_id', widget.workout.id!);
+    }
+  }
+
+  Future<void> _clearActiveWorkout() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('active_workout_id');
   }
 
   @override
@@ -46,13 +69,18 @@ class _WorkoutExecutionScreenState extends ConsumerState<WorkoutExecutionScreen>
       _savePendingWeights();
     }
     
+    // Só limpa se estivéssemos no modo de execução e o usuário saiu (cancelou)
+    if (!_isViewingMode) {
+      _clearActiveWorkout();
+    }
+    
     super.dispose();
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     super.didChangeAppLifecycleState(state);
-    if (state == AppLifecycleState.resumed) {
+    if (state == AppLifecycleState.resumed && !_isViewingMode) {
       ref.read(workoutTimerProvider.notifier).handleAppLifecycleResumed();
     }
   }
@@ -157,6 +185,8 @@ class _WorkoutExecutionScreenState extends ConsumerState<WorkoutExecutionScreen>
   }
 
   void _addSet(int exerciseId) {
+    if (_isViewingMode) return; // Não permitir alterações no modo de visualização
+
     setState(() {
       // Garantir que o map tenha a chave do exercício
       if (!_setsByExercise.containsKey(exerciseId)) {
@@ -197,6 +227,7 @@ class _WorkoutExecutionScreenState extends ConsumerState<WorkoutExecutionScreen>
   }
 
   void _scheduleAutoSave(int exerciseId) {
+    if (_isViewingMode) return;
     _pendingExercisesToSave.add(exerciseId);
     _autoSaveTimer?.cancel();
     _autoSaveTimer = Timer(_autoSaveDebounce, () {
@@ -205,7 +236,7 @@ class _WorkoutExecutionScreenState extends ConsumerState<WorkoutExecutionScreen>
   }
 
   Future<void> _savePendingWeights() async {
-    if (_pendingExercisesToSave.isEmpty) return;
+    if (_pendingExercisesToSave.isEmpty || _isViewingMode) return;
     
     try {
       final db = ref.read(databaseProvider);
@@ -225,6 +256,8 @@ class _WorkoutExecutionScreenState extends ConsumerState<WorkoutExecutionScreen>
   }
 
   void _finishWorkout() async {
+    if (_isViewingMode) return;
+
     final List<ExerciseSet> completedSetsList = [];
 
     _setsByExercise.forEach((exerciseId, sets) {
@@ -275,6 +308,7 @@ class _WorkoutExecutionScreenState extends ConsumerState<WorkoutExecutionScreen>
       );
       // Resetar o timer quando o treino é finalizado
       ref.read(workoutTimerProvider.notifier).resetTimer();
+      _clearActiveWorkout(); // Remove o treino ativo pois já acabou
       Navigator.pop(context);
     }
   }
@@ -467,6 +501,8 @@ class _WorkoutExecutionScreenState extends ConsumerState<WorkoutExecutionScreen>
   }
 
   void _toggleTechnique(int exerciseId, int setIndex) {
+    if (_isViewingMode) return;
+
     // Garantir que o map tenha a chave do exercício
     if (!_setsByExercise.containsKey(exerciseId)) {
       return;
@@ -546,13 +582,13 @@ class _WorkoutExecutionScreenState extends ConsumerState<WorkoutExecutionScreen>
     return PopScope(
       canPop: true,
       onPopInvokedWithResult: (didPop, result) {
-        if (didPop && _pendingExercisesToSave.isNotEmpty) {
+        if (didPop && _pendingExercisesToSave.isNotEmpty && !_isViewingMode) {
           _savePendingWeights();
         }
       },
       child: Scaffold(
         appBar: AppBar(
-          title: Text('Executando: ${widget.workout.name}'),
+          title: Text(_isViewingMode ? 'Visualizando: ${widget.workout.name}' : 'Executando: ${widget.workout.name}'),
         ),
         body: Column(
           children: [
@@ -585,7 +621,7 @@ class _WorkoutExecutionScreenState extends ConsumerState<WorkoutExecutionScreen>
                                   child: Text('${value}s DESCANSO'),
                                 );
                               }).toList(),
-                              onChanged: timerState.isTimerRunning ? null : (newValue) async {
+                              onChanged: (timerState.isTimerRunning || _isViewingMode) ? null : (newValue) async {
                                 if (newValue != null) {
                                   ref.read(workoutTimerProvider.notifier).updateRestTime(newValue);
                                   // Salvar preferência
@@ -612,10 +648,10 @@ class _WorkoutExecutionScreenState extends ConsumerState<WorkoutExecutionScreen>
                     children: [
                       if (!timerState.isTimerRunning)
                         IconButton.filled(
-                          onPressed: () => ref.read(workoutTimerProvider.notifier).startTimer(),
+                          onPressed: _isViewingMode ? null : () => ref.read(workoutTimerProvider.notifier).startTimer(),
                           icon: const Icon(Icons.play_arrow),
                           style: IconButton.styleFrom(
-                            backgroundColor: Colors.green,
+                            backgroundColor: _isViewingMode ? Colors.grey : Colors.green,
                             minimumSize: const Size(40, 40),
                           ),
                         )
@@ -630,7 +666,7 @@ class _WorkoutExecutionScreenState extends ConsumerState<WorkoutExecutionScreen>
                         ),
                       const SizedBox(width: 8),
                       IconButton.outlined(
-                        onPressed: () => ref.read(workoutTimerProvider.notifier).resetTimer(),
+                        onPressed: _isViewingMode ? null : () => ref.read(workoutTimerProvider.notifier).resetTimer(),
                         icon: const Icon(Icons.refresh),
                         style: IconButton.styleFrom(minimumSize: const Size(40, 40)),
                       ),
@@ -786,7 +822,7 @@ class _WorkoutExecutionScreenState extends ConsumerState<WorkoutExecutionScreen>
                                           bool isCompleted = _completedSets[exercise.id!]![setIndex];
 
                                           return GestureDetector(
-                                            onLongPress: () async {
+                                            onLongPress: _isViewingMode ? null : () async {
                                               final confirm = await showDialog<bool>(
                                                 context: context,
                                                 builder: (context) => AlertDialog(
@@ -824,7 +860,7 @@ class _WorkoutExecutionScreenState extends ConsumerState<WorkoutExecutionScreen>
                                               child: Row(
                                                 children: [
                                                   GestureDetector(
-                                                    onTap: () => _toggleTechnique(exercise.id!, setIndex),
+                                                    onTap: _isViewingMode ? null : () => _toggleTechnique(exercise.id!, setIndex),
                                                     child: CircleAvatar(
                                                       radius: 14,
                                                       backgroundColor: isCompleted ? Colors.green : Colors.grey.shade700,
@@ -839,6 +875,7 @@ class _WorkoutExecutionScreenState extends ConsumerState<WorkoutExecutionScreen>
                                                     child: TextFormField(
                                                       initialValue: set.reps.toString(),
                                                       keyboardType: TextInputType.number,
+                                                      enabled: !_isViewingMode,
                                                       decoration: const InputDecoration(
                                                         labelText: 'Reps',
                                                         isDense: true,
@@ -862,6 +899,7 @@ class _WorkoutExecutionScreenState extends ConsumerState<WorkoutExecutionScreen>
                                                     child: TextFormField(
                                                       initialValue: set.weight == '0' ? '' : set.weight,
                                                       keyboardType: TextInputType.text,
+                                                      enabled: !_isViewingMode,
                                                       decoration: const InputDecoration(
                                                         labelText: 'Peso (kg)',
                                                         hintText: '00',
@@ -886,7 +924,7 @@ class _WorkoutExecutionScreenState extends ConsumerState<WorkoutExecutionScreen>
                                                     width: 48,
                                                     child: Checkbox(
                                                       value: isCompleted,
-                                                      onChanged: (val) {
+                                                      onChanged: _isViewingMode ? null : (val) {
                                                         setState(() {
                                                           _completedSets[exercise.id!]![setIndex] = val ?? false;
                                                         });
@@ -898,11 +936,12 @@ class _WorkoutExecutionScreenState extends ConsumerState<WorkoutExecutionScreen>
                                             ),
                                           );
                                         }),
-                                        TextButton.icon(
-                                          onPressed: () => _addSet(exercise.id!),
-                                          icon: const Icon(Icons.add),
-                                          label: const Text('Adicionar Série'),
-                                        ),
+                                        if (!_isViewingMode)
+                                          TextButton.icon(
+                                            onPressed: () => _addSet(exercise.id!),
+                                            icon: const Icon(Icons.add),
+                                            label: const Text('Adicionar Série'),
+                                          ),
                                       ],
                                     ),
                                   ),
@@ -916,16 +955,35 @@ class _WorkoutExecutionScreenState extends ConsumerState<WorkoutExecutionScreen>
             ),
             Padding(
               padding: const EdgeInsets.all(16.0),
-              child: ElevatedButton.icon(
-                onPressed: _finishWorkout,
-                icon: const Icon(Icons.check_circle_outline),
-                label: const Text('Finalizar Treino'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.green,
-                  foregroundColor: Colors.white,
-                  minimumSize: const Size.fromHeight(55),
-                ),
-              ),
+              child: _isViewingMode
+                  ? ElevatedButton.icon(
+                      onPressed: () {
+                        setState(() {
+                          _isViewingMode = false;
+                        });
+                        _setActiveWorkout();
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Treino iniciado!')),
+                        );
+                      },
+                      icon: const Icon(Icons.play_arrow),
+                      label: const Text('Iniciar Treino'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.blue,
+                        foregroundColor: Colors.white,
+                        minimumSize: const Size.fromHeight(55),
+                      ),
+                    )
+                  : ElevatedButton.icon(
+                      onPressed: _finishWorkout,
+                      icon: const Icon(Icons.check_circle_outline),
+                      label: const Text('Finalizar Treino'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.green,
+                        foregroundColor: Colors.white,
+                        minimumSize: const Size.fromHeight(55),
+                      ),
+                    ),
             ),
           ],
         ),
