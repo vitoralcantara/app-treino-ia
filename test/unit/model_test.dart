@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:app_treino_academia/models/exercise.dart';
-import 'package:app_treino_academia/models/workout.dart';
+import 'package:power/models/exercise.dart';
+import 'package:power/models/workout.dart';
 
 void main() {
   group('Workout Model Tests', () {

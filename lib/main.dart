@@ -32,7 +32,7 @@ class MyApp extends StatelessWidget {
         FocusManager.instance.primaryFocus?.unfocus();
       },
       child: MaterialApp(
-        title: 'Treino IA',
+        title: 'Power',
       localizationsDelegates: const [
         GlobalMaterialLocalizations.delegate,
         GlobalWidgetsLocalizations.delegate,
