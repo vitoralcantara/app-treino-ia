@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -179,6 +180,9 @@ class _WorkoutExecutionScreenState extends ConsumerState<WorkoutExecutionScreen>
       _completedSets[exerciseId] = List.generate(suggestedSets, (_) => false);
     }
 
+    // Carregar o estado dos checkboxes salvos
+    await _loadCompletedSets();
+
     if (mounted) {
       setState(() {});
     }
@@ -224,6 +228,7 @@ class _WorkoutExecutionScreenState extends ConsumerState<WorkoutExecutionScreen>
     
     // Agendar auto-save ao adicionar série
     _scheduleAutoSave(exerciseId);
+    _saveCompletedSets();
   }
 
   void _scheduleAutoSave(int exerciseId) {
@@ -252,6 +257,71 @@ class _WorkoutExecutionScreenState extends ConsumerState<WorkoutExecutionScreen>
     } catch (e) {
       // Erro silencioso no auto-save
       debugPrint('Erro no auto-save: \$e');
+    }
+  }
+
+  Future<void> _saveCompletedSets() async {
+    if (_isViewingMode) return;
+    
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final workoutId = widget.workout.id;
+      if (workoutId == null) return;
+
+      // Converter o mapa de completed sets para um formato que pode ser salvo
+      final Map<String, List<int>> completedSetsData = {};
+      _completedSets.forEach((exerciseId, completedList) {
+        final List<int> completedIndices = [];
+        for (int i = 0; i < completedList.length; i++) {
+          if (completedList[i]) {
+            completedIndices.add(i);
+          }
+        }
+        completedSetsData[exerciseId.toString()] = completedIndices;
+      });
+
+      await prefs.setString('completed_sets_$workoutId', jsonEncode(completedSetsData));
+    } catch (e) {
+      debugPrint('Erro ao salvar completed sets: \$e');
+    }
+  }
+
+  Future<void> _loadCompletedSets() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final workoutId = widget.workout.id;
+      if (workoutId == null) return;
+
+      final completedSetsString = prefs.getString('completed_sets_$workoutId');
+      if (completedSetsString == null) return;
+
+      final Map<String, dynamic> completedSetsData = jsonDecode(completedSetsString);
+      
+      completedSetsData.forEach((exerciseIdStr, completedIndices) {
+        final exerciseId = int.tryParse(exerciseIdStr);
+        if (exerciseId != null && _completedSets.containsKey(exerciseId)) {
+          final indices = completedIndices as List<int>;
+          for (var index in indices) {
+            if (index < _completedSets[exerciseId]!.length) {
+              _completedSets[exerciseId]![index] = true;
+            }
+          }
+        }
+      });
+    } catch (e) {
+      debugPrint('Erro ao carregar completed sets: \$e');
+    }
+  }
+
+  Future<void> _clearCompletedSets() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final workoutId = widget.workout.id;
+      if (workoutId == null) return;
+
+      await prefs.remove('completed_sets_$workoutId');
+    } catch (e) {
+      debugPrint('Erro ao limpar completed sets: \$e');
     }
   }
 
@@ -301,6 +371,9 @@ class _WorkoutExecutionScreenState extends ConsumerState<WorkoutExecutionScreen>
         await db.saveExerciseDefaultWeights(exerciseId, sets);
       }
     }
+
+    // Limpar o estado dos checkboxes salvos
+    await _clearCompletedSets();
 
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -848,6 +921,7 @@ class _WorkoutExecutionScreenState extends ConsumerState<WorkoutExecutionScreen>
                                                   _completedSets[exercise.id!]!.removeAt(setIndex);
                                                 });
                                                 _scheduleAutoSave(exercise.id!);
+                                                _saveCompletedSets();
                                               }
                                             },
                                             child: Container(
@@ -928,6 +1002,7 @@ class _WorkoutExecutionScreenState extends ConsumerState<WorkoutExecutionScreen>
                                                         setState(() {
                                                           _completedSets[exercise.id!]![setIndex] = val ?? false;
                                                         });
+                                                        _saveCompletedSets();
                                                       },
                                                     ),
                                                   ),
