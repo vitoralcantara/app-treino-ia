@@ -257,6 +257,31 @@ class WorkoutTimerNotifier extends Notifier<WorkoutTimerState> {
     state = WorkoutTimerState.initial().copyWith(selectedRestTime: state.selectedRestTime);
   }
 
+  void restartAndStartTimer() async {
+    _timer?.cancel();
+    NotificationService().cancelAllNotifications();
+    
+    // Solicitar permissão de notificação para Android 13+
+    final notificationService = NotificationService();
+    await notificationService.requestNotificationPermission();
+    
+    state = WorkoutTimerState.initial().copyWith(selectedRestTime: state.selectedRestTime);
+    
+    // Mostrar notificação em tempo real com o countdown
+    notificationService.showActiveTimerNotification(state.selectedRestTime, state.selectedRestTime);
+
+    // Agendar notificação para o fim do tempo selecionado
+    notificationService.scheduleRestNotification(state.selectedRestTime);
+
+    // Iniciar o timer automaticamente
+    state = state.copyWith(
+      isTimerRunning: true,
+      timerStartTime: DateTime.now(),
+    );
+
+    _startPeriodicTimer();
+  }
+
   void updateRestTime(int newRestTime) {
     state = state.copyWith(selectedRestTime: newRestTime);
   }

@@ -739,8 +739,16 @@ class _WorkoutExecutionScreenState extends ConsumerState<WorkoutExecutionScreen>
                         ),
                       const SizedBox(width: 8),
                       IconButton.outlined(
+                        onPressed: _isViewingMode ? null : () => ref.read(workoutTimerProvider.notifier).restartAndStartTimer(),
+                        icon: const Icon(Icons.replay),
+                        tooltip: 'Reiniciar e começar',
+                        style: IconButton.styleFrom(minimumSize: const Size(40, 40)),
+                      ),
+                      const SizedBox(width: 8),
+                      IconButton.outlined(
                         onPressed: _isViewingMode ? null : () => ref.read(workoutTimerProvider.notifier).resetTimer(),
                         icon: const Icon(Icons.refresh),
+                        tooltip: 'Reiniciar',
                         style: IconButton.styleFrom(minimumSize: const Size(40, 40)),
                       ),
                     ],
