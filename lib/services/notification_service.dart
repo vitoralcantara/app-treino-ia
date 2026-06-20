@@ -36,6 +36,22 @@ class NotificationService {
     tz.setLocalLocation(tz.getLocation(currentTimeZone.identifier));
   }
 
+  Future<bool> requestNotificationPermission() async {
+    final androidImpl = flutterLocalNotificationsPlugin
+        .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin>();
+    
+    if (androidImpl == null) return false;
+    
+    // Verificar se a permissão já foi concedida
+    final bool? granted = await androidImpl.areNotificationsEnabled();
+    if (granted == true) return true;
+    
+    // Solicitar permissão
+    final bool? result = await androidImpl.requestNotificationsPermission();
+    return result ?? false;
+  }
+
   Future<void> scheduleRestNotification(int seconds) async {
     await flutterLocalNotificationsPlugin.zonedSchedule(
       id: 0,
