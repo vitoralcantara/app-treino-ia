@@ -102,6 +102,13 @@ class WorkoutListNotifier extends Notifier<List<Workout>> {
     await _load();
     _triggerCloudBackup();
   }
+
+  Future<void> toggleWorkoutActivity(int id, bool isActive) async {
+    final db = ref.read(databaseProvider);
+    await db.toggleWorkoutActivity(id, isActive);
+    await _load();
+    _triggerCloudBackup();
+  }
 }
 
 final workoutListProvider = NotifierProvider<WorkoutListNotifier, List<Workout>>(WorkoutListNotifier.new);
