@@ -432,6 +432,15 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         ),
                         contentPadding: EdgeInsets.zero,
                       ),
+                      SwitchListTile(
+                        title: const Text('Auto-selecionar próxima série'),
+                        subtitle: const Text('Ao reiniciar o timer, marca a próxima série automaticamente'),
+                        value: settings.autoSelectNextSet,
+                        onChanged: (value) {
+                          ref.read(settingsProvider.notifier).setAutoSelectNextSet(value);
+                        },
+                        contentPadding: EdgeInsets.zero,
+                      ),
                     ],
                   ),
                 ),

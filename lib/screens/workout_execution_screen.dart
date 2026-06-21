@@ -10,6 +10,7 @@ import '../models/workout_session.dart';
 import '../models/exercise_set.dart';
 import '../models/exercise.dart';
 import '../providers/workout_provider.dart';
+import '../providers/settings_provider.dart';
 
 class WorkoutExecutionScreen extends ConsumerStatefulWidget {
   final Workout workout;
@@ -40,6 +41,9 @@ class _WorkoutExecutionScreenState extends ConsumerState<WorkoutExecutionScreen>
   
   // Scroll position
   final ScrollController _scrollController = ScrollController();
+  
+  // Exercício atual selecionado
+  int? _currentExerciseId;
 
   @override
   void initState() {
@@ -126,6 +130,9 @@ class _WorkoutExecutionScreenState extends ConsumerState<WorkoutExecutionScreen>
     _dynamicExercises.clear();
     _dynamicExercises.addAll(widget.workout.exercises);
 
+    // Carregar o exercício atual selecionado
+    await _loadCurrentExercise();
+
     // Encontrar a última sessão deste treino específico
     final lastSession = sessions.firstWhere(
       (s) => s.workoutId == widget.workout.id,
@@ -196,6 +203,113 @@ class _WorkoutExecutionScreenState extends ConsumerState<WorkoutExecutionScreen>
 
     if (mounted) {
       setState(() {});
+    }
+  }
+
+  Future<void> _loadCurrentExercise() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final workoutId = widget.workout.id;
+      if (workoutId == null) return;
+
+      final currentExerciseId = prefs.getInt('current_exercise_$workoutId');
+      if (currentExerciseId != null) {
+        // Verificar se o exercício ainda existe na lista atual
+        if (_dynamicExercises.any((e) => e.id == currentExerciseId)) {
+          _currentExerciseId = currentExerciseId;
+        }
+      }
+    } catch (e) {
+      debugPrint('Erro ao carregar exercício atual: $e');
+    }
+  }
+
+  Future<void> _saveCurrentExercise(int exerciseId) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final workoutId = widget.workout.id;
+      if (workoutId == null) return;
+
+      await prefs.setInt('current_exercise_$workoutId', exerciseId);
+      setState(() {
+        _currentExerciseId = exerciseId;
+      });
+    } catch (e) {
+      debugPrint('Erro ao salvar exercício atual: $e');
+    }
+  }
+
+  Future<void> _clearCurrentExercise() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final workoutId = widget.workout.id;
+      if (workoutId == null) return;
+
+      await prefs.remove('current_exercise_$workoutId');
+      setState(() {
+        _currentExerciseId = null;
+      });
+    } catch (e) {
+      debugPrint('Erro ao limpar exercício atual: $e');
+    }
+  }
+
+  void _autoSelectNextSetIfEnabled() {
+    final settings = ref.read(settingsProvider);
+    if (!settings.autoSelectNextSet) return;
+
+    // Se não há exercício selecionado, seleciona o primeiro
+    if (_currentExerciseId == null && _dynamicExercises.isNotEmpty) {
+      _saveCurrentExercise(_dynamicExercises.first.id!);
+    }
+
+    // Marcar a próxima série do exercício atual
+    if (_currentExerciseId != null) {
+      final completedSets = _completedSets[_currentExerciseId];
+      if (completedSets != null && completedSets.isNotEmpty) {
+        // Encontrar a primeira série não marcada
+        int nextSetIndex = completedSets.indexWhere((completed) => !completed);
+        
+        if (nextSetIndex != -1 && nextSetIndex < completedSets.length) {
+          // Marcar a próxima série
+          setState(() {
+            completedSets[nextSetIndex] = true;
+          });
+          _saveCompletedSets();
+        } else {
+          // Todas as séries estão marcadas, selecionar o próximo exercício
+          _selectNextExerciseWithFirstUncompletedSet();
+        }
+      }
+    }
+  }
+
+  void _selectNextExerciseWithFirstUncompletedSet() {
+    if (_currentExerciseId == null) return;
+
+    final currentExerciseIndex = _dynamicExercises.indexWhere((e) => e.id == _currentExerciseId);
+    
+    if (currentExerciseIndex == -1) return;
+
+    // Procurar o próximo exercício com séries não marcadas
+    for (int i = currentExerciseIndex + 1; i < _dynamicExercises.length; i++) {
+      final exercise = _dynamicExercises[i];
+      final exerciseId = exercise.id!;
+      final completedSets = _completedSets[exerciseId];
+      
+      if (completedSets != null && completedSets.isNotEmpty) {
+        final firstUncompletedIndex = completedSets.indexWhere((completed) => !completed);
+        
+        if (firstUncompletedIndex != -1) {
+          // Selecionar este exercício e marcar a primeira série não marcada
+          _saveCurrentExercise(exerciseId);
+          setState(() {
+            completedSets[firstUncompletedIndex] = true;
+          });
+          _saveCompletedSets();
+          return;
+        }
+      }
     }
   }
 
@@ -442,6 +556,9 @@ class _WorkoutExecutionScreenState extends ConsumerState<WorkoutExecutionScreen>
       
       // Limpar a posição do scroll quando o treino é finalizado
       await _clearScrollPosition();
+      
+      // Limpar o exercício atual quando o treino é finalizado
+      await _clearCurrentExercise();
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -814,7 +931,10 @@ class _WorkoutExecutionScreenState extends ConsumerState<WorkoutExecutionScreen>
                         ),
                       const SizedBox(width: 8),
                       IconButton.outlined(
-                        onPressed: _isViewingMode ? null : () => ref.read(workoutTimerProvider.notifier).restartAndStartTimer(),
+                        onPressed: _isViewingMode ? null : () {
+                          ref.read(workoutTimerProvider.notifier).restartAndStartTimer();
+                          _autoSelectNextSetIfEnabled();
+                        },
                         icon: const Icon(Icons.replay),
                         tooltip: 'Reiniciar e começar',
                         style: IconButton.styleFrom(minimumSize: const Size(40, 40)),
@@ -865,14 +985,42 @@ class _WorkoutExecutionScreenState extends ConsumerState<WorkoutExecutionScreen>
                                 ),
                               ...group.map((exercise) {
                                 final sets = _setsByExercise[exercise.id!] ?? [];
-                                return Card(
-                                  margin: EdgeInsets.all(isSuperSet ? 8 : 4),
-                                  child: Padding(
-                                    padding: const EdgeInsets.all(12.0),
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Row(
+                                final isCurrentExercise = exercise.id == _currentExerciseId;
+                                
+                                return GestureDetector(
+                                  onTap: () => _saveCurrentExercise(exercise.id!),
+                                  child: Card(
+                                    margin: EdgeInsets.all(isSuperSet ? 8 : 4),
+                                    color: isCurrentExercise ? Colors.blue.shade50 : null,
+                                    elevation: isCurrentExercise ? 4 : 1,
+                                    shape: RoundedRectangleBorder(
+                                      side: isCurrentExercise 
+                                        ? BorderSide(color: Colors.blue, width: 2) 
+                                        : BorderSide.none,
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Padding(
+                                      padding: const EdgeInsets.all(12.0),
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          if (isCurrentExercise)
+                                            Container(
+                                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                              decoration: BoxDecoration(
+                                                color: Colors.blue,
+                                                borderRadius: BorderRadius.circular(4),
+                                              ),
+                                              child: const Text(
+                                                'EXERCÍCIO ATUAL',
+                                                style: TextStyle(
+                                                  color: Colors.white,
+                                                  fontSize: 10,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
+                                            ),
+                                          Row(
                                           children: [
                                             if (exercise.imageUrl != null && exercise.imageUrl!.isNotEmpty)
                                               Padding(
@@ -1102,6 +1250,7 @@ class _WorkoutExecutionScreenState extends ConsumerState<WorkoutExecutionScreen>
                                             label: const Text('Adicionar Série'),
                                           ),
                                       ],
+                                    ),
                                     ),
                                   ),
                                 );
