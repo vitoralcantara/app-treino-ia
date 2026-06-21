@@ -979,12 +979,12 @@ class _WorkoutExecutionScreenState extends ConsumerState<WorkoutExecutionScreen>
                                                   const SizedBox(width: 8),
                                                   Expanded(
                                                     child: TextFormField(
-                                                      initialValue: set.weight == '0' ? '' : set.weight,
+                                                      initialValue: set.weight,
                                                       keyboardType: TextInputType.text,
                                                       enabled: !_isViewingMode,
                                                       decoration: const InputDecoration(
                                                         labelText: 'Peso (kg)',
-                                                        hintText: '00',
+                                                        hintText: '0',
                                                         isDense: true,
                                                         border: OutlineInputBorder(),
                                                         contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
