@@ -52,7 +52,7 @@ class SettingsNotifier extends Notifier<SettingsState> {
 
     state = SettingsState(
       geminiApiKey: apiKey,
-      autoSyncEnabled: autoSyncEnabled == 'true',
+      autoSyncEnabled: autoSyncEnabled == null ? true : autoSyncEnabled == 'true',
       syncOnWifiOnly: syncOnWifiOnly == 'true',
       syncIntervalMinutes: syncIntervalMinutes != null 
           ? int.tryParse(syncIntervalMinutes) ?? 30 
