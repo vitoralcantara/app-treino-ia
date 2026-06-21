@@ -69,6 +69,8 @@ Responda EXCLUSIVAMENTE com o código JSON puro seguindo este formato exato:
 
 IMPORTANTE: Sempre inclua o campo "suggested_reps_list" com uma lista progressiva de repetições para cada série (ex: [12, 10, 8, 8]). Use padrões progressivos como [12, 10, 8] para drop-set ou [12, 10, 10] para pirâmide.
 
+CORRESPONDÊNCIA DE EXERCÍCIOS: Quando sugerir exercícios, VERIFIQUE se já existe um exercício similar na lista de exercícios disponíveis acima. Se existir um exercício similar (ex: sugerir "triceps pulley" quando existe "triceps corda"), USE O NOME EXATO do exercício existente. Isso é crucial para garantir que o exercício seja reconhecido corretamente no aplicativo.
+
 $profileContext
 
 $exercisesContext

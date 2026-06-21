@@ -106,6 +106,17 @@ Regras de Formatação:
 8. "group": (Opcional) Use o mesmo ID para exercícios em Bi-set/Super série.
 9. "technique": (Opcional) Use "drop_set", "rest_pause", ou null.
 
+IMPORTANTE - Correspondência de Exercícios:
+10. Quando sugerir um exercício, VERIFIQUE se já existe um exercício similar na lista de exercícios disponíveis do aplicativo.
+11. Se existir um exercício similar (ex: sugerir "triceps pulley" quando existe "triceps corda"), USE O NOME EXATO do exercício existente.
+12. Exemplos de correspondências comuns:
+    - "triceps pulley" → "triceps corda"
+    - "leg press 45" → "leg press"
+    - "remada curvada" → "remada"
+    - "supino reto" → "supino"
+    - "agachamento livre" → "agachamento"
+13. Isso é crucial para garantir que o exercício seja reconhecido corretamente no aplicativo.
+
 Formato Exato:
 {
   "routine_name": "Nome",
@@ -234,11 +245,25 @@ Formato Exato:
     }
   }
 
-  void _copyJsonInstructions() {
-    Clipboard.setData(const ClipboardData(text: _jsonInstructionsText));
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Instruções JSON copiadas para o clipboard!')),
-    );
+  Future<void> _copyJsonInstructions() async {
+    try {
+      final directory = await getTemporaryDirectory();
+      final file = File('${directory.path}/regras_formatacao_treino_ia.json');
+      await file.writeAsString(_jsonInstructionsText);
+
+      await SharePlus.instance.share(
+        ShareParams(
+          files: [XFile(file.path)],
+          text: 'Regras de Formatação JSON para Treino IA',
+        ),
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Erro ao gerar arquivo JSON: $e')),
+        );
+      }
+    }
   }
 
   Future<void> _downloadJsonInstructions() async {
@@ -520,14 +545,14 @@ Formato Exato:
               const SizedBox(height: 10),
               OutlinedButton.icon(
                 onPressed: _copyJsonInstructions,
-                icon: const Icon(Icons.code),
-                label: const Text('Copiar Apenas Regras JSON'),
+                icon: const Icon(Icons.file_download_outlined),
+                label: const Text('Baixar Regras JSON'),
               ),
               const SizedBox(height: 10),
               OutlinedButton.icon(
                 onPressed: _downloadJsonInstructions,
                 icon: const Icon(Icons.file_download_outlined),
-                label: const Text('Baixar Regras em Arquivo'),
+                label: const Text('Baixar Regras em TXT'),
               ),
               if (_generatedPrompt.isNotEmpty) ...[
                 const SizedBox(height: 10),
