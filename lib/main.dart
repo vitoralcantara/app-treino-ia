@@ -1,11 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'screens/splash_screen.dart';
 import 'services/notification_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  
+  // Inicializar Firebase Core (necessário para Google Sign-In no Android)
+  try {
+    await Firebase.initializeApp();
+  } catch (e) {
+    debugPrint('Erro ao inicializar Firebase: $e');
+  }
   
   // Inicialização segura para evitar crashes se o serviço de notificação falhar
   try {

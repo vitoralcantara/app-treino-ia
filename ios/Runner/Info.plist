@@ -62,6 +62,14 @@
 	</array>
 	<key>GIDClientID</key>
 	<string>437382817749-5amoaf55rsvpj9p7el0lkd28vm7dtsn2.apps.googleusercontent.com</string>
+	<key>CLIENT_ID</key>
+	<string>437382817749-5amoaf55rsvpj9p7el0lkd28vm7dtsn2.apps.googleusercontent.com</string>
+	<key>REVERSED_CLIENT_ID</key>
+	<string>com.googleusercontent.apps.437382817749-5amoaf55rsvpj9p7el0lkd28vm7dtsn2</string>
+	<key>PLIST_VERSION</key>
+	<string>1</string>
+	<key>BUNDLE_ID</key>
+	<string>com.vitoralmeida.power</string>
 	<key>UTExportedTypeDeclarations</key>
 	<array>
 		<dict>
