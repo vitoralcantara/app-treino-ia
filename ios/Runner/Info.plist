@@ -56,16 +56,16 @@
 			<string>Editor</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
-				<string>com.googleusercontent.apps.437382817749-5amoaf55rsvpj9p7el0lkd28vm7dtsn2</string>
+				<string>com.googleusercontent.apps.894878362751-soa4heve32ju1lfl4diddo2fgmqcnt05</string>
 			</array>
 		</dict>
 	</array>
 	<key>GIDClientID</key>
-	<string>437382817749-5amoaf55rsvpj9p7el0lkd28vm7dtsn2.apps.googleusercontent.com</string>
+	<string>894878362751-soa4heve32ju1lfl4diddo2fgmqcnt05.apps.googleusercontent.com</string>
 	<key>CLIENT_ID</key>
-	<string>437382817749-5amoaf55rsvpj9p7el0lkd28vm7dtsn2.apps.googleusercontent.com</string>
+	<string>894878362751-soa4heve32ju1lfl4diddo2fgmqcnt05.apps.googleusercontent.com</string>
 	<key>REVERSED_CLIENT_ID</key>
-	<string>com.googleusercontent.apps.437382817749-5amoaf55rsvpj9p7el0lkd28vm7dtsn2</string>
+	<string>com.googleusercontent.apps.894878362751-soa4heve32ju1lfl4diddo2fgmqcnt05</string>
 	<key>PLIST_VERSION</key>
 	<string>1</string>
 	<key>BUNDLE_ID</key>

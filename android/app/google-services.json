@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "894878362751",
+    "project_id": "app-treino-ia-ac3a8",
+    "storage_bucket": "app-treino-ia-ac3a8.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:894878362751:android:c859fe8c47e000d64ae34a",
+        "android_client_info": {
+          "package_name": "com.vitoralmeida.power"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "894878362751-soa4heve32ju1lfl4diddo2fgmqcnt05.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA7GFs0_awzByPPqyVTn2QVBiYEbAJFFIg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "894878362751-soa4heve32ju1lfl4diddo2fgmqcnt05.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
