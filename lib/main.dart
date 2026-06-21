@@ -1,3 +1,4 @@
+import 'dart:io' show Platform;
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -8,11 +9,13 @@ import 'services/notification_service.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
-  // Inicializar Firebase Core (necessário para Google Sign-In no Android)
-  try {
-    await Firebase.initializeApp();
-  } catch (e) {
-    debugPrint('Erro ao inicializar Firebase: $e');
+  // Inicializar Firebase Core apenas no Android (necessário para Google Sign-In)
+  if (Platform.isAndroid) {
+    try {
+      await Firebase.initializeApp();
+    } catch (e) {
+      debugPrint('Erro ao inicializar Firebase: $e');
+    }
   }
   
   // Inicialização segura para evitar crashes se o serviço de notificação falhar
