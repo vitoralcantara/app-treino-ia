@@ -45,19 +45,19 @@ Atue como um Personal Trainer. Com base no meu pedido abaixo e no meu perfil fí
 Responda EXCLUSIVAMENTE com o código JSON puro seguindo este formato exato:
 
 {
-  "routine_name": "Nome da Rotina (ex: Hipertrofia Fase 1)",
+  "routine_name": "Nome",
   "suggested_duration_weeks": 4,
   "workouts": [
     {
       "name": "Treino A",
       "exercises": [
         {
-          "name": "Supino Reto",
-          "category": "Peito",
-          "suggested_sets": 4,
+          "name": "Exercício",
+          "category": "Grupo Muscular",
+          "suggested_sets": 3,
           "suggested_reps": 12,
-          "suggested_reps_list": [12, 10, 8, 8],
-          "notes": "Focar na cadência 3-1-1",
+          "suggested_reps_list": [12, 10, 8],
+          "notes": "Observações/Instruções",
           "video_url": "link se houver",
           "group": "opcional_id",
           "technique": "opcional"
