@@ -14,7 +14,15 @@
       },
       "oauth_client": [
         {
-          "client_id": "894878362751-soa4heve32ju1lfl4diddo2fgmqcnt05.apps.googleusercontent.com",
+          "client_id": "894878362751-2q349o12er95vcjh09j3vs5sm7gsuf42.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.vitoralmeida.power",
+            "certificate_hash": "24e2479b8730f96ef95b9d3884f6aa7a747650d9"
+          }
+        },
+        {
+          "client_id": "894878362751-4m3q4fji6rlv2q9urmd1m7ulk0ca6h15.apps.googleusercontent.com",
           "client_type": 3
         }
       ],
@@ -27,7 +35,7 @@
         "appinvite_service": {
           "other_platform_oauth_client": [
             {
-              "client_id": "894878362751-soa4heve32ju1lfl4diddo2fgmqcnt05.apps.googleusercontent.com",
+              "client_id": "894878362751-4m3q4fji6rlv2q9urmd1m7ulk0ca6h15.apps.googleusercontent.com",
               "client_type": 3
             }
           ]
