@@ -51,6 +51,11 @@
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
+        
+        <!-- Google Sign-In Configuration -->
+        <meta-data
+            android:name="com.google.android.gms.google_sign_in_api_id"
+            android:value="@string/default_web_client_id"/>
     </application>
     <!-- Required to query activities that can process text, see:
          https://developer.android.com/training/package-visibility and
