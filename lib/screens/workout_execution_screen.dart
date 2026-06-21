@@ -31,6 +31,7 @@ class _WorkoutExecutionScreenState extends ConsumerState<WorkoutExecutionScreen>
   final List<Exercise> _dynamicExercises = []; // Exercícios adicionados na hora
   bool _initialized = false;
   late bool _isViewingMode;
+  bool _isFinishing = false; // Proteção contra cliques duplos no finalizar
   
   // Auto-save de pesos
   Timer? _autoSaveTimer;
@@ -327,6 +328,11 @@ class _WorkoutExecutionScreenState extends ConsumerState<WorkoutExecutionScreen>
 
   void _finishWorkout() async {
     if (_isViewingMode) return;
+    if (_isFinishing) return; // Proteção contra cliques duplos
+    
+    setState(() {
+      _isFinishing = true;
+    });
 
     final List<ExerciseSet> completedSetsList = [];
 
@@ -343,46 +349,57 @@ class _WorkoutExecutionScreenState extends ConsumerState<WorkoutExecutionScreen>
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Marque pelo menos uma série como concluída!')),
       );
+      setState(() {
+        _isFinishing = false;
+      });
       return;
     }
 
     // Salvar qualquer coisa pendente antes de finalizar
     await _savePendingWeights();
 
-    final session = WorkoutSession(
-      workoutId: widget.workout.id!,
-      workoutName: widget.workout.name,
-      date: DateTime.now(),
-      sets: completedSetsList,
-    );
-
-    await ref.read(sessionListProvider.notifier).addSession(session);
-
-    // Salvar pesos padrão para cada exercício que teve séries concluídas
-    final db = ref.read(databaseProvider);
-    for (var exercise in _dynamicExercises) {
-      final exerciseId = exercise.id!;
-      final sets = _setsByExercise[exerciseId]!;
-      final completedStatus = _completedSets[exerciseId]!;
-
-      // Verificar se houve pelo menos uma série concluída para este exercício
-      final hasCompletedSets = completedStatus.any((completed) => completed);
-      if (hasCompletedSets) {
-        await db.saveExerciseDefaultWeights(exerciseId, sets);
-      }
-    }
-
-    // Limpar o estado dos checkboxes salvos
-    await _clearCompletedSets();
-
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Treino concluído e salvo no histórico!')),
+    try {
+      final session = WorkoutSession(
+        workoutId: widget.workout.id!,
+        workoutName: widget.workout.name,
+        date: DateTime.now(),
+        sets: completedSetsList,
       );
-      // Resetar o timer quando o treino é finalizado
-      ref.read(workoutTimerProvider.notifier).resetTimer();
-      _clearActiveWorkout(); // Remove o treino ativo pois já acabou
-      Navigator.pop(context);
+
+      await ref.read(sessionListProvider.notifier).addSession(session);
+
+      // Salvar pesos padrão para cada exercício que teve séries concluídas
+      final db = ref.read(databaseProvider);
+      for (var exercise in _dynamicExercises) {
+        final exerciseId = exercise.id!;
+        final sets = _setsByExercise[exerciseId]!;
+        final completedStatus = _completedSets[exerciseId]!;
+
+        // Verificar se houve pelo menos uma série concluída para este exercício
+        final hasCompletedSets = completedStatus.any((completed) => completed);
+        if (hasCompletedSets) {
+          await db.saveExerciseDefaultWeights(exerciseId, sets);
+        }
+      }
+
+      // Limpar o estado dos checkboxes salvos
+      await _clearCompletedSets();
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Treino concluído e salvo no histórico!')),
+        );
+        // Resetar o timer quando o treino é finalizado
+        ref.read(workoutTimerProvider.notifier).resetTimer();
+        _clearActiveWorkout(); // Remove o treino ativo pois já acabou
+        Navigator.pop(context);
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isFinishing = false;
+        });
+      }
     }
   }
 
@@ -1058,9 +1075,11 @@ class _WorkoutExecutionScreenState extends ConsumerState<WorkoutExecutionScreen>
                       ),
                     )
                   : ElevatedButton.icon(
-                      onPressed: _finishWorkout,
-                      icon: const Icon(Icons.check_circle_outline),
-                      label: const Text('Finalizar Treino'),
+                      onPressed: _isFinishing ? null : _finishWorkout,
+                      icon: _isFinishing 
+                          ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                          : const Icon(Icons.check_circle_outline),
+                      label: Text(_isFinishing ? 'Finalizando...' : 'Finalizar Treino'),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.green,
                         foregroundColor: Colors.white,
