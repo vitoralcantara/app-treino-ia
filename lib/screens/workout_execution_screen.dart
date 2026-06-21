@@ -37,6 +37,9 @@ class _WorkoutExecutionScreenState extends ConsumerState<WorkoutExecutionScreen>
   Timer? _autoSaveTimer;
   static const Duration _autoSaveDebounce = Duration(milliseconds: 1000);
   final Set<int> _pendingExercisesToSave = {};
+  
+  // Scroll position
+  final ScrollController _scrollController = ScrollController();
 
   @override
   void initState() {
@@ -65,6 +68,10 @@ class _WorkoutExecutionScreenState extends ConsumerState<WorkoutExecutionScreen>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _autoSaveTimer?.cancel();
+    _scrollController.dispose();
+    
+    // Salvar posição do scroll antes de sair
+    _saveScrollPosition();
     
     // Tenta salvar pesos pendentes antes de fechar
     if (_pendingExercisesToSave.isNotEmpty) {
@@ -184,8 +191,44 @@ class _WorkoutExecutionScreenState extends ConsumerState<WorkoutExecutionScreen>
     // Carregar o estado dos checkboxes salvos
     await _loadCompletedSets();
 
+    // Restaurar posição do scroll
+    await _restoreScrollPosition();
+
     if (mounted) {
       setState(() {});
+    }
+  }
+
+  Future<void> _saveScrollPosition() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final workoutId = widget.workout.id;
+      if (workoutId == null) return;
+
+      final scrollPosition = _scrollController.position.pixels;
+      await prefs.setDouble('scroll_position_$workoutId', scrollPosition);
+    } catch (e) {
+      debugPrint('Erro ao salvar posição do scroll: $e');
+    }
+  }
+
+  Future<void> _restoreScrollPosition() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final workoutId = widget.workout.id;
+      if (workoutId == null) return;
+
+      final scrollPosition = prefs.getDouble('scroll_position_$workoutId');
+      if (scrollPosition != null && scrollPosition > 0) {
+        // Aguarda um frame para garantir que o ListView foi renderizado
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (_scrollController.hasClients && mounted) {
+            _scrollController.jumpTo(scrollPosition);
+          }
+        });
+      }
+    } catch (e) {
+      debugPrint('Erro ao restaurar posição do scroll: $e');
     }
   }
 
@@ -314,6 +357,18 @@ class _WorkoutExecutionScreenState extends ConsumerState<WorkoutExecutionScreen>
     }
   }
 
+  Future<void> _clearScrollPosition() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final workoutId = widget.workout.id;
+      if (workoutId == null) return;
+
+      await prefs.remove('scroll_position_$workoutId');
+    } catch (e) {
+      debugPrint('Erro ao limpar posição do scroll: $e');
+    }
+  }
+
   Future<void> _clearCompletedSets() async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -384,6 +439,9 @@ class _WorkoutExecutionScreenState extends ConsumerState<WorkoutExecutionScreen>
 
       // Limpar o estado dos checkboxes salvos
       await _clearCompletedSets();
+      
+      // Limpar a posição do scroll quando o treino é finalizado
+      await _clearScrollPosition();
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -777,6 +835,7 @@ class _WorkoutExecutionScreenState extends ConsumerState<WorkoutExecutionScreen>
               child: _dynamicExercises.isEmpty
                   ? const Center(child: Text('Este treino não tem exercícios.'))
                   : ListView.builder(
+                      controller: _scrollController,
                       itemCount: groupedExercises.length,
                       itemBuilder: (context, groupIndex) {
                         final group = groupedExercises[groupIndex];
