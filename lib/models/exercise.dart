@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 class Exercise {
   final int? id;
   final String name;
@@ -65,10 +67,18 @@ class Exercise {
       return value.map((e) => int.tryParse(e.toString()) ?? 0).toList();
     }
     if (value is String) {
-      // Trata formatos como "12/10/8" ou "12, 10, 8" ou "12-10-8"
-      final matches = RegExp(r'\d+').allMatches(value);
-      if (matches.isNotEmpty) {
-        return matches.map((m) => int.parse(m.group(0)!)).toList();
+      // Tenta fazer parse como JSON primeiro
+      try {
+        final decoded = jsonDecode(value);
+        if (decoded is List) {
+          return decoded.map((e) => int.tryParse(e.toString()) ?? 0).toList();
+        }
+      } catch (_) {
+        // Se falhar, trata como formatos como "12/10/8" ou "12, 10, 8" ou "12-10-8"
+        final matches = RegExp(r'\d+').allMatches(value);
+        if (matches.isNotEmpty) {
+          return matches.map((m) => int.parse(m.group(0)!)).toList();
+        }
       }
     }
     return null;
@@ -85,7 +95,7 @@ class Exercise {
       'is_available': isAvailable ? 1 : 0,
       if (suggestedSets != null) 'suggested_sets': suggestedSets,
       if (suggestedReps != null) 'suggested_reps': suggestedReps,
-      if (suggestedRepsList != null) 'suggested_reps_list': suggestedRepsList,
+      if (suggestedRepsList != null) 'suggested_reps_list': jsonEncode(suggestedRepsList),
       if (workoutSpecificNotes != null) 'workout_specific_notes': workoutSpecificNotes,
       if (groupId != null) 'group_id': groupId,
       if (suggestedTechnique != null) 'technique': suggestedTechnique,

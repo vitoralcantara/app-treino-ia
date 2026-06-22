@@ -578,12 +578,25 @@ Formato Exato:
                 description: 'Passo 2: Após a IA responder, cole o código JSON completo exatamente aqui.',
                 child: TextField(
                   controller: _responseController,
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     labelText: 'Cole a resposta da IA aqui',
                     hintText: 'Cole o JSON gerado pelo Gemini...',
-                    border: OutlineInputBorder(),
+                    border: const OutlineInputBorder(),
+                    suffixIcon: _responseController.text.isNotEmpty
+                        ? IconButton(
+                            icon: const Icon(Icons.clear),
+                            onPressed: () {
+                              setState(() {
+                                _responseController.clear();
+                              });
+                            },
+                          )
+                        : null,
                   ),
                   maxLines: 5,
+                  onChanged: (value) {
+                    setState(() {}); // Para atualizar o ícone de limpar
+                  },
                 ),
               ),
               const SizedBox(height: 10),

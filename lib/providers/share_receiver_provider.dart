@@ -49,18 +49,23 @@ class ShareReceiverNotifier extends Notifier<ShareReceiverState> {
 
   void _startMonitoring() {
     try {
+      debugPrint('Iniciando monitoramento de intents de compartilhamento');
+
       // Monitorar intents enquanto o app está rodando
       _intentSubscription = ReceiveSharingIntent.instance.getMediaStream().listen(
         (List<SharedMediaFile> files) {
+          debugPrint('Intent recebido enquanto app está rodando');
           _processSharedFiles(files);
         },
         onError: (error) {
+          debugPrint('Erro no stream de intents: $error');
           state = state.copyWith(lastError: 'Erro ao receber arquivo: $error');
         },
       );
 
       // Verificar se o app foi aberto através de um intent (cold start)
       ReceiveSharingIntent.instance.getInitialMedia().then((List<SharedMediaFile> files) {
+        debugPrint('Verificando mídia inicial (cold start): ${files.length} arquivos');
         if (files.isNotEmpty) {
           _processSharedFiles(files);
         }
@@ -73,30 +78,37 @@ class ShareReceiverNotifier extends Notifier<ShareReceiverState> {
   }
 
   Future<void> _processSharedFiles(List<SharedMediaFile> files) async {
+    debugPrint('Arquivos recebidos para compartilhamento: ${files.length}');
     if (files.isEmpty) return;
 
     // Procurar por arquivos JSON
     for (var file in files) {
+      debugPrint('Arquivo recebido: ${file.path}, tipo: ${file.type}');
       if (file.path.toLowerCase().endsWith('.json')) {
+        debugPrint('Arquivo JSON encontrado, processando: ${file.path}');
         await _processJsonFile(file.path);
         break; // Processa apenas o primeiro arquivo JSON encontrado
       }
     }
+    debugPrint('Nenhum arquivo JSON encontrado');
   }
 
   Future<void> _processJsonFile(String filePath) async {
+    debugPrint('Processando arquivo JSON: $filePath');
     state = state.copyWith(isProcessing: true, lastProcessedFile: filePath);
 
     try {
+      debugPrint('Chamando importBackupFromFile');
       final result = await _backupService.importBackupFromFile(filePath);
-      
+      debugPrint('Resultado da importação: $result');
+
       if (result != null) {
         // Forçar recarregamento total dos providers após a restauração
         ref.invalidate(workoutListProvider);
         ref.invalidate(sessionListProvider);
         ref.invalidate(exerciseListProvider);
         ref.invalidate(routineProgressProvider);
-        
+
         state = state.copyWith(
           isProcessing: false,
           lastSuccessMessage: result,
@@ -109,6 +121,7 @@ class ShareReceiverNotifier extends Notifier<ShareReceiverState> {
         );
       }
     } catch (e) {
+      debugPrint('Erro ao processar arquivo JSON: $e');
       state = state.copyWith(
         isProcessing: false,
         lastError: 'Erro ao processar arquivo: $e',

@@ -26,7 +26,7 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 15, // Aumentei a versão para 15 para mudar weight de REAL para TEXT
+      version: 16, // Aumentei para 16 para adicionar suggested_reps_list
       onCreate: _createDB,
       onUpgrade: _upgradeDB,
     );
@@ -169,6 +169,14 @@ class DatabaseHelper {
         await txn.execute('CREATE INDEX idx_exercise_default_weights_exercise_id ON exercise_default_weights(exercise_id)');
       });
     }
+    if (oldVersion < 16) {
+      // Adicionar coluna suggested_reps_list para suportar listas progressivas de repetições
+      try {
+        await db.execute('ALTER TABLE exercises ADD COLUMN suggested_reps_list TEXT');
+      } catch (_) {
+        // Se a coluna já existir, ignora o erro
+      }
+    }
   }
 
   Future _createDB(Database db, int version) async {
@@ -188,6 +196,7 @@ class DatabaseHelper {
         video_url TEXT,
         suggested_sets INTEGER,
         suggested_reps INTEGER,
+        suggested_reps_list TEXT,
         technique TEXT,
         workout_specific_notes TEXT
       )
