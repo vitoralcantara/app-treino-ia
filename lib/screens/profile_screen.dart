@@ -102,6 +102,21 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     );
   }
 
+  String _getSyncStatusText(DateTime syncTime) {
+    final now = DateTime.now();
+    final difference = now.difference(syncTime);
+
+    if (difference.inMinutes < 1) {
+      return 'Agora mesmo';
+    } else if (difference.inMinutes < 60) {
+      return '${difference.inMinutes} min atrás';
+    } else if (difference.inHours < 24) {
+      return '${difference.inHours}h atrás';
+    } else {
+      return DateFormat('dd/MM').format(syncTime);
+    }
+  }
+
   void _showImportConfirmation(BuildContext context, WidgetRef ref) {
     showDialog(
       context: context,
@@ -386,11 +401,51 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                             style: TextStyle(fontWeight: FontWeight.bold),
                           ),
                           const Spacer(),
+                          // Indicador visual de status de sincronização
                           if (backupState.isAutoSyncing)
-                            const SizedBox(
-                              width: 16,
-                              height: 16,
-                              child: CircularProgressIndicator(strokeWidth: 2),
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const SizedBox(
+                                  width: 16,
+                                  height: 16,
+                                  child: CircularProgressIndicator(strokeWidth: 2),
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  'Sincronizando...',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.blue,
+                                    fontStyle: FontStyle.italic,
+                                  ),
+                                ),
+                              ],
+                            )
+                          else if (backupState.lastSyncAttempt != null)
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.check_circle,
+                                  size: 16,
+                                  color: Colors.green,
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  'Sync: ${_getSyncStatusText(backupState.lastSyncAttempt!)}',
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.grey,
+                                  ),
+                                ),
+                              ],
+                            )
+                          else
+                            const Icon(
+                              Icons.sync_problem,
+                              size: 16,
+                              color: Colors.grey,
                             ),
                         ],
                       ),

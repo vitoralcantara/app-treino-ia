@@ -60,6 +60,7 @@ dependencies:
   googleapis: ^16.0.0
   extension_google_sign_in_as_googleapis_auth: ^2.0.13
   receive_sharing_intent: ^1.8.0
+  archive: ^3.6.1
 
 dev_dependencies:
   flutter_test:

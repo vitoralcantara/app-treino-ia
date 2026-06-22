@@ -1,9 +1,11 @@
 import 'dart:io';
+import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:googleapis/drive/v3.dart' as drive;
 import 'package:extension_google_sign_in_as_googleapis_auth/extension_google_sign_in_as_googleapis_auth.dart';
 import 'package:path/path.dart' as p;
+import 'package:archive/archive.dart';
 import '../data/database_helper.dart';
 
 class GoogleDriveService {
@@ -55,73 +57,157 @@ class GoogleDriveService {
 
   Future<bool> uploadBackup() async {
     try {
+      debugPrint('[BACKUP] Iniciando processo de backup...');
+
       final driveApi = await _getDriveApi();
-      if (driveApi == null) return false;
+      if (driveApi == null) {
+        debugPrint('[BACKUP] Erro: Drive API não disponível');
+        return false;
+      }
 
       final dbPath = await DatabaseHelper.instance.getDatabasePath();
       final file = File(dbPath);
 
-      if (!await file.exists()) return false;
+      if (!await file.exists()) {
+        debugPrint('[BACKUP] Erro: Arquivo de banco de dados não encontrado');
+        return false;
+      }
+
+      // Criar arquivo ZIP com metadados JSON
+      debugPrint('[BACKUP] Criando arquivo ZIP com metadados...');
+      final archive = Archive();
+
+      // Adicionar banco de dados ao ZIP
+      final dbBytes = await file.readAsBytes();
+      archive.addFile(ArchiveFile('workout_app.db', dbBytes.length, dbBytes));
+
+      // Criar metadados JSON
+      final dbFile = File(dbPath);
+      final lastModified = await dbFile.lastModified();
+
+      final backupMetadata = {
+        'version': '2.0',
+        'timestamp': DateTime.now().toIso8601String(),
+        'databaseModified': lastModified.toIso8601String(),
+        'platform': Platform.operatingSystem,
+        'appVersion': '1.0.0',
+      };
+
+      final jsonBytes = utf8.encode(jsonEncode(backupMetadata));
+      archive.addFile(ArchiveFile('backup.json', jsonBytes.length, jsonBytes));
+
+      debugPrint('[BACKUP] Codificando ZIP...');
+      final zipData = ZipEncoder().encode(archive);
+
+      if (zipData == null) {
+        debugPrint('[BACKUP] Erro: Falha ao codificar ZIP');
+        return false;
+      }
 
       // Procurar por backup anterior na appDataFolder
       final fileList = await driveApi.files.list(
         spaces: 'appDataFolder',
-        q: "name = 'workout_app.db'",
+        q: "name = 'treino_ia_backup.zip'",
       );
 
       final driveFile = drive.File();
-      driveFile.name = 'workout_app.db';
+      driveFile.name = 'treino_ia_backup.zip';
       driveFile.parents = ['appDataFolder'];
 
-      final media = drive.Media(file.openRead(), await file.length());
+      final media = drive.Media(
+        Stream.fromIterable([zipData]),
+        zipData.length,
+      );
 
       if (fileList.files != null && fileList.files!.isNotEmpty) {
+        debugPrint('[BACKUP] Atualizando arquivo existente no Drive...');
         // Atualizar arquivo existente
         final existingFileId = fileList.files!.first.id!;
         await driveApi.files.update(driveFile, existingFileId, uploadMedia: media);
       } else {
+        debugPrint('[BACKUP] Criando novo arquivo no Drive...');
         // Criar novo arquivo
         await driveApi.files.create(driveFile, uploadMedia: media);
       }
 
+      debugPrint('[BACKUP] Processo de backup concluído com sucesso');
       return true;
     } catch (e) {
+      debugPrint('[BACKUP] Erro durante backup: $e');
       return false;
     }
   }
 
   Future<bool> downloadAndRestoreBackup() async {
     try {
+      debugPrint('[RESTORE] Iniciando processo de restore...');
+
       final driveApi = await _getDriveApi();
-      if (driveApi == null) return false;
+      if (driveApi == null) {
+        debugPrint('[RESTORE] Erro: Drive API não disponível');
+        return false;
+      }
 
       final fileList = await driveApi.files.list(
         spaces: 'appDataFolder',
-        q: "name = 'workout_app.db'",
+        q: "name = 'treino_ia_backup.zip'",
       );
 
-      if (fileList.files == null || fileList.files!.isEmpty) return false;
+      if (fileList.files == null || fileList.files!.isEmpty) {
+        debugPrint('[RESTORE] Erro: Nenhum arquivo de backup encontrado');
+        return false;
+      }
 
-      final fileId = fileList.files!.first.id!;
-      // Versão segura de download
+      final remoteFile = fileList.files!.first;
+      debugPrint('[RESTORE] Arquivo de backup encontrado: ${remoteFile.name}');
+      debugPrint('[RESTORE] Modificado em: ${remoteFile.modifiedTime}');
+
+      final fileId = remoteFile.id!;
+
+      // Download do ZIP
+      debugPrint('[RESTORE] Baixando arquivo ZIP...');
       final responseStream = await driveApi.files.get(fileId, downloadOptions: drive.DownloadOptions.fullMedia) as drive.Media;
-      
-      final tempDir = await Directory.systemTemp.createTemp();
-      final tempFile = File(p.join(tempDir.path, 'restore.db'));
-      
+
       final List<int> dataStore = [];
       await for (final data in responseStream.stream) {
         dataStore.addAll(data);
       }
-      await tempFile.writeAsBytes(dataStore);
 
-      await DatabaseHelper.instance.overwriteDatabase(tempFile.path);
-      
+      debugPrint('[RESTORE] Decodificando ZIP...');
+      final archive = ZipDecoder().decodeBytes(dataStore);
+
+      // Procurar backup.json no ZIP para metadados
+      String? metadataJson;
+      File? dbFile;
+
+      for (final file in archive) {
+        if (file.isFile) {
+          if (file.name == 'backup.json') {
+            metadataJson = utf8.decode(file.content as List<int>);
+            debugPrint('[RESTORE] Metadados encontrados: ${metadataJson.substring(0, metadataJson.length > 100 ? 100 : metadataJson.length)}...');
+          } else if (file.name == 'workout_app.db') {
+            final tempDir = await Directory.systemTemp.createTemp();
+            dbFile = File(p.join(tempDir.path, 'restore.db'));
+            await dbFile.writeAsBytes(file.content as List<int>);
+          }
+        }
+      }
+
+      if (dbFile == null) {
+        debugPrint('[RESTORE] Erro: Arquivo de banco de dados não encontrado no ZIP');
+        return false;
+      }
+
+      debugPrint('[RESTORE] Restaurando banco de dados...');
+      await DatabaseHelper.instance.overwriteDatabase(dbFile.path);
+
       // Limpar temporário
-      await tempDir.delete(recursive: true);
-      
+      await dbFile.parent.delete(recursive: true);
+
+      debugPrint('[RESTORE] Processo de restore concluído com sucesso');
       return true;
     } catch (e) {
+      debugPrint('[RESTORE] Erro durante restore: $e');
       return false;
     }
   }
@@ -133,13 +219,14 @@ class GoogleDriveService {
 
       final fileList = await driveApi.files.list(
         spaces: 'appDataFolder',
-        q: "name = 'workout_app.db'",
+        q: "name = 'treino_ia_backup.zip'",
       );
 
       if (fileList.files == null || fileList.files!.isEmpty) return null;
 
       return fileList.files!.first.modifiedTime;
     } catch (e) {
+      debugPrint('[BACKUP] Erro ao buscar data do backup: $e');
       return null;
     }
   }
