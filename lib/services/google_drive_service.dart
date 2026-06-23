@@ -121,12 +121,17 @@ class GoogleDriveService {
 
       if (fileList.files != null && fileList.files!.isNotEmpty) {
         debugPrint('[BACKUP] Atualizando arquivo existente no Drive...');
-        // Atualizar arquivo existente
+        // Atualizar arquivo existente - NÃO enviar 'parents' no update
         final existingFileId = fileList.files!.first.id!;
-        await driveApi.files.update(driveFile, existingFileId, uploadMedia: media);
+        final updateMetadata = drive.File();
+        updateMetadata.name = 'treino_ia_backup.zip';
+        // No update do v3, não se envia parents no corpo, usa-se parâmetros addParents/removeParents se necessário.
+        // Como o arquivo já está na appDataFolder, basta atualizar o conteúdo e o nome.
+        await driveApi.files.update(updateMetadata, existingFileId, uploadMedia: media);
       } else {
         debugPrint('[BACKUP] Criando novo arquivo no Drive...');
-        // Criar novo arquivo
+        // Criar novo arquivo - Aqui enviamos 'parents'
+        driveFile.parents = ['appDataFolder'];
         await driveApi.files.create(driveFile, uploadMedia: media);
       }
 
