@@ -272,18 +272,21 @@ class WorkoutTab extends ConsumerWidget {
                               Row(
                                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                 children: [
-                                  Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        'Ciclo: ${routine.name}',
-                                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-                                      ),
-                                      Text(
-                                        isComplete ? 'Ciclo Finalizado! 🎉' : 'Evolução do Ciclo',
-                                        style: TextStyle(fontSize: 11, color: isComplete ? Colors.green : Colors.grey),
-                                      ),
-                                    ],
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          'Ciclo: ${routine.name}',
+                                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                                          softWrap: true,
+                                        ),
+                                        Text(
+                                          isComplete ? 'Ciclo Finalizado! 🎉' : 'Evolução do Ciclo',
+                                          style: TextStyle(fontSize: 11, color: isComplete ? Colors.green : Colors.grey),
+                                        ),
+                                      ],
+                                    ),
                                   ),
                                   if (isComplete)
                                     ElevatedButton.icon(
