@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../services/google_drive_service.dart';
 import '../data/database_helper.dart';
 import 'settings_provider.dart';
+import 'workout_provider.dart';
 
 class BackupState {
   final bool isConnecting;
@@ -212,12 +213,22 @@ class BackupNotifier extends Notifier<BackupState> with WidgetsBindingObserver {
                 } else {
                   debugPrint('[SYNC] Sem dados locais significativos, fazendo download...');
                   final success = await _driveService.downloadAndRestoreBackup();
-                  if (success) ref.invalidate(workoutProvider);
+                  if (success) {
+                    ref.invalidate(workoutListProvider);
+                    ref.invalidate(exerciseListProvider);
+                    ref.invalidate(sessionListProvider);
+                    ref.invalidate(routineProgressProvider);
+                  }
                 }
               } else {
                 debugPrint('[SYNC] Nuvem é mais recente, fazendo download...');
                 final success = await _driveService.downloadAndRestoreBackup();
-                if (success) ref.invalidate(workoutProvider);
+                if (success) {
+                  ref.invalidate(workoutListProvider);
+                  ref.invalidate(exerciseListProvider);
+                  ref.invalidate(sessionListProvider);
+                  ref.invalidate(routineProgressProvider);
+                }
               }
             }
           } else {
@@ -321,7 +332,10 @@ class BackupNotifier extends Notifier<BackupState> with WidgetsBindingObserver {
     final success = await _driveService.downloadAndRestoreBackup();
     if (success) {
       // Invalida os providers de dados para recarregar a UI com os dados novos
-      ref.invalidate(workoutProvider);
+      ref.invalidate(workoutListProvider);
+      ref.invalidate(exerciseListProvider);
+      ref.invalidate(sessionListProvider);
+      ref.invalidate(routineProgressProvider);
       state = state.copyWith(isDownloading: false, lastSyncAttempt: DateTime.now());
     } else {
       state = state.copyWith(isDownloading: false, errorMessage: 'Falha ao restaurar backup');
