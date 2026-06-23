@@ -211,11 +211,13 @@ class BackupNotifier extends Notifier<BackupState> with WidgetsBindingObserver {
                   await _driveService.uploadBackup();
                 } else {
                   debugPrint('[SYNC] Sem dados locais significativos, fazendo download...');
-                  await _driveService.downloadAndRestoreBackup();
+                  final success = await _driveService.downloadAndRestoreBackup();
+                  if (success) ref.invalidate(workoutProvider);
                 }
               } else {
                 debugPrint('[SYNC] Nuvem é mais recente, fazendo download...');
-                await _driveService.downloadAndRestoreBackup();
+                final success = await _driveService.downloadAndRestoreBackup();
+                if (success) ref.invalidate(workoutProvider);
               }
             }
           } else {
@@ -318,6 +320,8 @@ class BackupNotifier extends Notifier<BackupState> with WidgetsBindingObserver {
     _lastManualSyncTime = DateTime.now();
     final success = await _driveService.downloadAndRestoreBackup();
     if (success) {
+      // Invalida os providers de dados para recarregar a UI com os dados novos
+      ref.invalidate(workoutProvider);
       state = state.copyWith(isDownloading: false, lastSyncAttempt: DateTime.now());
     } else {
       state = state.copyWith(isDownloading: false, errorMessage: 'Falha ao restaurar backup');
