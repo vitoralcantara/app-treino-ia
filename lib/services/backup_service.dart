@@ -18,14 +18,35 @@ class BackupService {
     final allWorkouts = await db.getAllWorkouts(); // Pega ativos e inativos
     final sessions = await db.getAllSessions();
     final archivedRoutines = await db.getArchivedRoutines();
+    
+    // Coletar pesos padrão para todos os exercícios
+    final exerciseIds = exercises.map((e) => e.id!).toList();
+    final defaultWeights = await db.getAllExerciseDefaultWeights(exerciseIds);
+    
+    // Converter para formato serializável
+    final defaultWeightsList = <Map<String, dynamic>>[];
+    defaultWeights.forEach((exerciseId, sets) {
+      for (int i = 0; i < sets.length; i++) {
+        final set = sets[i];
+        defaultWeightsList.add({
+          'exercise_id': exerciseId,
+          'reps': set.reps,
+          'weight': set.weight,
+          'position': i,
+          'technique': set.technique,
+          'updated_at': DateTime.now().toIso8601String(),
+        });
+      }
+    });
 
     final backupData = {
-      'version': 1,
+      'version': 2, // Atualizado para versão 2 para incluir pesos padrão
       'exported_at': DateTime.now().toIso8601String(),
       'exercises': exercises.map((e) => e.toJson()).toList(),
       'workouts': allWorkouts.map((w) => w.toJson()).toList(),
       'sessions': sessions.map((s) => s.toJson()).toList(),
       'archived_routines': archivedRoutines.map((r) => r.toJson()).toList(),
+      'exercise_default_weights': defaultWeightsList,
     };
 
     final String jsonString = jsonEncode(backupData);

@@ -1248,6 +1248,10 @@ class _WorkoutExecutionScreenState extends ConsumerState<WorkoutExecutionScreen>
                                                           _completedSets[exercise.id!]![setIndex] = val ?? false;
                                                         });
                                                         _saveCompletedSets();
+                                                        // Selecionar automaticamente o exercício como atual ao marcar série
+                                                        if (val ?? false) {
+                                                          _saveCurrentExercise(exercise.id!);
+                                                        }
                                                       },
                                                     ),
                                                   ),

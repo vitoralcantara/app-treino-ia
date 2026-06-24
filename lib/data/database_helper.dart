@@ -629,6 +629,7 @@ class DatabaseHelper {
       await txn.delete('workouts');
       await txn.delete('routines');
       await txn.delete('exercises');
+      await txn.delete('exercise_default_weights');
 
       // 2. Restaurar Exercícios
       final List<dynamic> exercises = backupData['exercises'] ?? [];
@@ -679,6 +680,14 @@ class DatabaseHelper {
             ...setJson as Map<String, dynamic>,
             'session_id': sessionId,
           });
+        }
+      }
+
+      // 6. Restaurar Pesos Padrão (disponível a partir da versão 2)
+      if (backupData.containsKey('exercise_default_weights')) {
+        final List<dynamic> defaultWeights = backupData['exercise_default_weights'] ?? [];
+        for (var weightJson in defaultWeights) {
+          await txn.insert('exercise_default_weights', weightJson as Map<String, dynamic>);
         }
       }
     });
