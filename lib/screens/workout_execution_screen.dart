@@ -319,8 +319,11 @@ class _WorkoutExecutionScreenState extends ConsumerState<WorkoutExecutionScreen>
       final workoutId = widget.workout.id;
       if (workoutId == null) return;
 
-      final scrollPosition = _scrollController.position.pixels;
-      await prefs.setDouble('scroll_position_$workoutId', scrollPosition);
+      // Verificar se o controller tem clients antes de acessar a posição
+      if (_scrollController.hasClients) {
+        final scrollPosition = _scrollController.position.pixels;
+        await prefs.setDouble('scroll_position_$workoutId', scrollPosition);
+      }
     } catch (e) {
       debugPrint('Erro ao salvar posição do scroll: $e');
     }
