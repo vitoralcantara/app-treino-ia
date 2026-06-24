@@ -33,6 +33,7 @@ class _WorkoutExecutionScreenState extends ConsumerState<WorkoutExecutionScreen>
   bool _initialized = false;
   late bool _isViewingMode;
   bool _isFinishing = false; // Proteção contra cliques duplos no finalizar
+  bool _workoutCompleted = false; // Flag para indicar se o treino foi concluído
   
   // Auto-save de pesos
   Timer? _autoSaveTimer;
@@ -83,7 +84,8 @@ class _WorkoutExecutionScreenState extends ConsumerState<WorkoutExecutionScreen>
     }
     
     // Só limpa se estivéssemos no modo de execução e o usuário saiu (cancelou)
-    if (!_isViewingMode) {
+    // Se o treino foi concluído com sucesso, o _finishWorkout já limpou
+    if (!_isViewingMode && !_workoutCompleted) {
       _clearActiveWorkout();
     }
     
@@ -564,6 +566,11 @@ class _WorkoutExecutionScreenState extends ConsumerState<WorkoutExecutionScreen>
       await _clearCurrentExercise();
 
       if (mounted) {
+        // Marcar que o treino foi concluído com sucesso
+        setState(() {
+          _workoutCompleted = true;
+        });
+        
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Treino concluído e salvo no histórico!')),
         );

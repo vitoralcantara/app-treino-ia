@@ -40,33 +40,37 @@ class _SplashScreenState extends ConsumerState<SplashScreen> with SingleTickerPr
 
     _controller.forward().then((_) {
       Future.delayed(const Duration(milliseconds: 500), () async {
-        if (mounted) {
-          final prefs = await SharedPreferences.getInstance();
-          final activeWorkoutId = prefs.getInt('active_workout_id');
+        if (!mounted) return;
+        
+        final prefs = await SharedPreferences.getInstance();
+        final activeWorkoutId = prefs.getInt('active_workout_id');
+        
+        if (activeWorkoutId != null && mounted) {
+          // Se houver um treino ativo, tentamos encontrá-lo
+          final workouts = ref.read(workoutListProvider);
+          final activeWorkout = workouts.where((w) => w.id == activeWorkoutId).firstOrNull;
           
-          if (activeWorkoutId != null && mounted) {
-            // Se houver um treino ativo, tentamos encontrá-lo
-            final workouts = ref.read(workoutListProvider);
-            final activeWorkout = workouts.where((w) => w.id == activeWorkoutId).firstOrNull;
-            
-            if (activeWorkout != null) {
-              Navigator.of(context).pushReplacement(
-                MaterialPageRoute(builder: (context) => WorkoutExecutionScreen(workout: activeWorkout)),
-              );
-            } else {
+          if (activeWorkout != null && mounted) {
+            Navigator.of(context).pushReplacement(
+              MaterialPageRoute(builder: (context) => WorkoutExecutionScreen(workout: activeWorkout)),
+            );
+          } else {
+            // Limpar o ID inválido para evitar problemas futuros
+            await prefs.remove('active_workout_id');
+            if (mounted) {
               Navigator.of(context).pushReplacement(
                 MaterialPageRoute(builder: (context) => const HomeScreen()),
               );
             }
-          } else if (mounted) {
-            Navigator.of(context).pushReplacement(
-              MaterialPageRoute(builder: (context) => const HomeScreen()),
-            );
           }
-          
-          // Verificar se houve importação automática e mostrar mensagem
-          _checkAutoImportResult();
+        } else if (mounted) {
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(builder: (context) => const HomeScreen()),
+          );
         }
+        
+        // Verificar se houve importação automática e mostrar mensagem
+        _checkAutoImportResult();
       });
     });
   }
