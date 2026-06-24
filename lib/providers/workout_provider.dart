@@ -215,17 +215,21 @@ class WorkoutTimerNotifier extends Notifier<WorkoutTimerState> {
     final notificationService = NotificationService();
     await notificationService.requestNotificationPermission();
     
+    // Se o timer estiver no estado inicial, começa do tempo selecionado
+    if (state.seconds == 0) {
+      state = state.copyWith(seconds: state.selectedRestTime);
+    }
+    
     state = state.copyWith(
       isTimerRunning: true,
-      timerStartTime: DateTime.now().subtract(Duration(seconds: state.seconds)),
+      timerStartTime: DateTime.now(),
     );
 
     // Mostrar notificação em tempo real com o countdown
-    final remainingTime = state.selectedRestTime - state.seconds;
-    notificationService.showActiveTimerNotification(remainingTime, state.selectedRestTime);
+    notificationService.showActiveTimerNotification(state.seconds, state.selectedRestTime);
 
     // Agendar notificação para o fim do tempo selecionado
-    notificationService.scheduleRestNotification(state.selectedRestTime - state.seconds > 0 ? state.selectedRestTime - state.seconds : state.selectedRestTime);
+    notificationService.scheduleRestNotification(state.seconds);
 
     _startPeriodicTimer();
   }
@@ -233,16 +237,16 @@ class WorkoutTimerNotifier extends Notifier<WorkoutTimerState> {
   void _startPeriodicTimer() {
     _timer?.cancel();
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      final newSeconds = state.seconds + 1;
-      final remainingTime = state.selectedRestTime - newSeconds;
+      final newSeconds = state.seconds - 1;
 
       // Atualizar notificação em tempo real
-      if (remainingTime > 0) {
-        NotificationService().updateTimerNotification(remainingTime);
+      if (newSeconds > 0) {
+        NotificationService().updateTimerNotification(newSeconds);
       }
 
-      if (newSeconds >= state.selectedRestTime) {
+      if (newSeconds <= 0) {
         pauseTimer();
+        state = state.copyWith(seconds: 0);
       } else {
         state = state.copyWith(seconds: newSeconds);
       }
@@ -272,7 +276,11 @@ class WorkoutTimerNotifier extends Notifier<WorkoutTimerState> {
     final notificationService = NotificationService();
     await notificationService.requestNotificationPermission();
     
-    state = WorkoutTimerState.initial().copyWith(selectedRestTime: state.selectedRestTime);
+    // Começa do tempo selecionado (contagem decrescente)
+    state = WorkoutTimerState.initial().copyWith(
+      selectedRestTime: state.selectedRestTime,
+      seconds: state.selectedRestTime,
+    );
     
     // Mostrar notificação em tempo real com o countdown
     notificationService.showActiveTimerNotification(state.selectedRestTime, state.selectedRestTime);
@@ -290,24 +298,33 @@ class WorkoutTimerNotifier extends Notifier<WorkoutTimerState> {
   }
 
   void updateRestTime(int newRestTime) {
-    state = state.copyWith(selectedRestTime: newRestTime);
+    // Se o timer não estiver rodando, atualiza também o display para o novo tempo
+    if (!state.isTimerRunning) {
+      state = state.copyWith(
+        selectedRestTime: newRestTime,
+        seconds: newRestTime,
+      );
+    } else {
+      state = state.copyWith(selectedRestTime: newRestTime);
+    }
   }
 
   void handleAppLifecycleResumed() {
     if (state.isTimerRunning && state.timerStartTime != null) {
       // Recalcular o tempo decorrido enquanto o app estava em segundo plano
       final elapsedSeconds = DateTime.now().difference(state.timerStartTime!).inSeconds;
-      state = state.copyWith(seconds: elapsedSeconds);
-      final remainingTime = state.selectedRestTime - elapsedSeconds;
+      final newSeconds = state.seconds - elapsedSeconds;
 
       // Atualizar notificação com o tempo recalculado
-      if (remainingTime > 0) {
-        NotificationService().updateTimerNotification(remainingTime);
+      if (newSeconds > 0) {
+        NotificationService().updateTimerNotification(newSeconds);
       }
 
-      if (elapsedSeconds >= state.selectedRestTime) {
+      if (newSeconds <= 0) {
         pauseTimer();
+        state = state.copyWith(seconds: 0);
       } else {
+        state = state.copyWith(seconds: newSeconds);
         // Reiniciar o timer com o tempo atualizado
         _startPeriodicTimer();
       }

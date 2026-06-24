@@ -902,7 +902,7 @@ class _WorkoutExecutionScreenState extends ConsumerState<WorkoutExecutionScreen>
                               fontSize: 28, 
                               fontWeight: FontWeight.bold, 
                               fontFamily: 'monospace',
-                              color: timerState.seconds >= timerState.selectedRestTime ? Colors.redAccent : null,
+                              color: timerState.seconds <= 10 && timerState.seconds > 0 ? Colors.redAccent : null,
                             ),
                           ),
                         ],
