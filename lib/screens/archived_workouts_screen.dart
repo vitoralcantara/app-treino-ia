@@ -65,7 +65,11 @@ class _ArchivedWorkoutsScreenState extends ConsumerState<ArchivedWorkoutsScreen>
                         ),
                         children: routine.workouts.map((w) => ListTile(
                           dense: true,
-                          title: Text(w.name),
+                          title: Text(
+                            w.name,
+                            maxLines: null,
+                            softWrap: true,
+                          ),
                           subtitle: Text('${w.exercises.length} exercícios'),
                           leading: const Icon(Icons.fitness_center, size: 18),
                         )).toList(),

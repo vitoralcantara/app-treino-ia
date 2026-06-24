@@ -330,7 +330,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                           ListTile(
                             contentPadding: EdgeInsets.zero,
                             leading: const CircleAvatar(child: Icon(Icons.person)),
-                            title: Text(backupState.userEmail!),
+                            title: Text(
+                              backupState.userEmail!,
+                              maxLines: null,
+                              softWrap: true,
+                            ),
                             subtitle: Text(
                               backupState.lastBackupDate == null
                                 ? 'Nenhum backup encontrado'
@@ -451,7 +455,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       ),
                       const SizedBox(height: 10),
                       SwitchListTile(
-                        title: const Text('Sincronizar automaticamente'),
+                        title: const Text(
+                          'Sincronizar automaticamente',
+                          maxLines: null,
+                          softWrap: true,
+                        ),
                         subtitle: const Text('Faz backup/restauração automática quando há mudanças'),
                         value: settings.autoSyncEnabled,
                         onChanged: (value) {
@@ -460,7 +468,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         contentPadding: EdgeInsets.zero,
                       ),
                       SwitchListTile(
-                        title: const Text('Sincronizar apenas em Wi-Fi'),
+                        title: const Text(
+                          'Sincronizar apenas em Wi-Fi',
+                          maxLines: null,
+                          softWrap: true,
+                        ),
                         subtitle: const Text('Economiza dados móveis'),
                         value: settings.syncOnWifiOnly,
                         onChanged: (value) {
@@ -469,7 +481,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         contentPadding: EdgeInsets.zero,
                       ),
                       ListTile(
-                        title: const Text('Intervalo de sincronização'),
+                        title: const Text(
+                          'Intervalo de sincronização',
+                          maxLines: null,
+                          softWrap: true,
+                        ),
                         subtitle: Text('${settings.syncIntervalMinutes} minutos'),
                         trailing: DropdownButton<int>(
                           value: settings.syncIntervalMinutes,
@@ -488,7 +504,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         contentPadding: EdgeInsets.zero,
                       ),
                       SwitchListTile(
-                        title: const Text('Auto-selecionar próxima série'),
+                        title: const Text(
+                          'Auto-selecionar próxima série',
+                          maxLines: null,
+                          softWrap: true,
+                        ),
                         subtitle: const Text('Ao reiniciar o timer, marca a próxima série automaticamente'),
                         value: settings.autoSelectNextSet,
                         onChanged: (value) {
@@ -510,7 +530,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             Card(
               child: ListTile(
                 leading: const Icon(Icons.history_edu, color: Colors.orangeAccent),
-                title: const Text('Treinos Anteriores'),
+                title: const Text(
+                  'Treinos Anteriores',
+                  maxLines: null,
+                  softWrap: true,
+                ),
                 subtitle: const Text('Ver e retomar rotinas arquivadas'),
                 trailing: const Icon(Icons.arrow_forward_ios, size: 16),
                 onTap: () {
@@ -533,7 +557,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 children: [
                   ListTile(
                     leading: const Icon(Icons.download, color: Colors.blue),
-                    title: const Text('Exportar Backup JSON'),
+                    title: const Text(
+                      'Exportar Backup JSON',
+                      maxLines: null,
+                      softWrap: true,
+                    ),
                     subtitle: const Text('Salvar em arquivo manual'),
                     onTap: () async {
                       await BackupService().exportBackup();
@@ -547,7 +575,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   const Divider(height: 1),
                   ListTile(
                     leading: const Icon(Icons.upload, color: Colors.green),
-                    title: const Text('Importar Backup JSON'),
+                    title: const Text(
+                      'Importar Backup JSON',
+                      maxLines: null,
+                      softWrap: true,
+                    ),
                     subtitle: const Text('Restaurar de um arquivo JSON'),
                     onTap: () => _showImportConfirmation(context, ref),
                   ),
@@ -564,7 +596,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             Card(
               child: ListTile(
                 leading: const Icon(Icons.info_outline, color: Colors.purple),
-                title: const Text('Sobre o App e Doações'),
+                title: const Text(
+                  'Sobre o App e Doações',
+                  maxLines: null,
+                  softWrap: true,
+                ),
                 subtitle: const Text('Conheça o projeto e apoie o desenvolvimento'),
                 trailing: const Icon(Icons.arrow_forward_ios, size: 16),
                 onTap: () => _showAboutDialog(context),

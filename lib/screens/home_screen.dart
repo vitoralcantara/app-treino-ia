@@ -485,6 +485,8 @@ class WorkoutTab extends ConsumerWidget {
                           title: Text(
                             workout.name,
                             style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                            maxLines: null,
+                            softWrap: true,
                           ),
                           subtitle: Text('${workout.exercises.length} exercícios'),
                           leading: Container(
@@ -755,7 +757,11 @@ class HistoryTab extends ConsumerWidget {
                     itemBuilder: (context, index) {
                       final session = sessions[index];
                       return ListTile(
-                        title: Text(session.workoutName),
+                        title: Text(
+                          session.workoutName,
+                          maxLines: null,
+                          softWrap: true,
+                        ),
                         subtitle: Text(
                           '${session.date.day.toString().padLeft(2, '0')}/${session.date.month.toString().padLeft(2, '0')}/${session.date.year} - ${session.sets.length} séries',
                         ),

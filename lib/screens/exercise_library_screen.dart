@@ -61,7 +61,11 @@ class ExerciseLibraryScreen extends ConsumerWidget {
                 title: Text(cat, style: const TextStyle(fontWeight: FontWeight.bold)),
                 initiallyExpanded: true,
                 children: catExercises.map((ex) => ListTile(
-                  title: Text(ex.name),
+                  title: Text(
+                    ex.name,
+                    maxLines: null,
+                    softWrap: true,
+                  ),
                   subtitle: Text(ex.isAvailable ? 'Disponível para IA' : 'Indisponível'),
                   leading: Checkbox(
                     value: ex.isAvailable,

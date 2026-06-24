@@ -54,7 +54,11 @@ class WorkoutDetailsScreen extends ConsumerWidget {
                     itemBuilder: (context, index) {
                       final exercise = workout.exercises[index];
                       return ListTile(
-                        title: Text(exercise.name),
+                        title: Text(
+                          exercise.name,
+                          maxLines: null,
+                          softWrap: true,
+                        ),
                         subtitle: Text(exercise.category ?? 'Geral'),
                         trailing: IconButton(
                           icon: const Icon(Icons.remove_circle_outline, color: Colors.redAccent),
@@ -127,13 +131,21 @@ class WorkoutDetailsScreen extends ConsumerWidget {
                           if (index == exercises.length) {
                             return ListTile(
                               leading: const Icon(Icons.add_circle, color: Colors.green),
-                              title: const Text('Criar Novo Exercício'),
+                              title: const Text(
+                                'Criar Novo Exercício',
+                                maxLines: null,
+                                softWrap: true,
+                              ),
                               onTap: () => _showCreateCustomExerciseDialog(context, ref),
                             );
                           }
                           final exercise = exercises[index];
                           return ListTile(
-                            title: Text(exercise.name),
+                            title: Text(
+                              exercise.name,
+                              maxLines: null,
+                              softWrap: true,
+                            ),
                             subtitle: Text(exercise.category ?? ''),
                             trailing: const Icon(Icons.add),
                             onTap: () {

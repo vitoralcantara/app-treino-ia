@@ -628,7 +628,11 @@ class _WorkoutExecutionScreenState extends ConsumerState<WorkoutExecutionScreen>
 
                         return ListTile(
                           leading: const Icon(Icons.fitness_center),
-                          title: Text('$weight kg x $reps reps'),
+                          title: Text(
+                            '$weight kg x $reps reps',
+                            maxLines: null,
+                            softWrap: true,
+                          ),
                           subtitle: Text('${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year} ${tech != null ? "($tech)" : ""}'),
                         );
                       },

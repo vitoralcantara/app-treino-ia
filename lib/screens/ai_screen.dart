@@ -438,7 +438,11 @@ Formato Exato:
               Card(
                 child: ListTile(
                   leading: const Icon(Icons.library_books, color: Colors.blue),
-                  title: const Text('Minha Biblioteca de Exercícios'),
+                  title: const Text(
+                    'Minha Biblioteca de Exercícios',
+                    maxLines: null,
+                    softWrap: true,
+                  ),
                   subtitle: const Text('Selecione o que você tem disponível'),
                   trailing: const Icon(Icons.arrow_forward_ios, size: 16),
                   onTap: () {
@@ -483,6 +487,8 @@ Formato Exato:
                         title: Text(
                           file.path.split('/').last,
                           style: const TextStyle(fontSize: 12),
+                          maxLines: null,
+                          softWrap: true,
                           overflow: TextOverflow.ellipsis,
                         ),
                         trailing: IconButton(
