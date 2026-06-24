@@ -1275,7 +1275,12 @@ class _WorkoutExecutionScreenState extends ConsumerState<WorkoutExecutionScreen>
                     ),
             ),
             Padding(
-              padding: const EdgeInsets.all(16.0),
+              padding: EdgeInsets.only(
+                left: 16.0,
+                right: 16.0,
+                top: 16.0,
+                bottom: 16.0 + MediaQuery.of(context).padding.bottom,
+              ),
               child: _isViewingMode
                   ? ElevatedButton.icon(
                       onPressed: () {
