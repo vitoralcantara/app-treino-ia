@@ -179,11 +179,13 @@ class BackupNotifier extends Notifier<BackupState> with WidgetsBindingObserver {
 
     try {
       final cloudBackupDate = await _driveService.getLatestBackupDate();
+      bool didUpload = false;
 
       if (cloudBackupDate == null) {
         debugPrint('[SYNC] Não há backup na nuvem, fazendo upload...');
         // Não há backup na nuvem, faz upload
         await _driveService.uploadBackup();
+        didUpload = true;
       } else {
         debugPrint('[SYNC] Backup na nuvem encontrado: $cloudBackupDate');
         // Verifica qual versão é mais recente
@@ -201,6 +203,7 @@ class BackupNotifier extends Notifier<BackupState> with WidgetsBindingObserver {
               debugPrint('[SYNC] Local é mais recente, fazendo upload...');
               // Local é mais recente, faz upload
               await _driveService.uploadBackup();
+              didUpload = true;
             } else {
               // Nuvem é mais recente - verifica se é primeira sincronização
               if (state.lastBackupDate == null) {
@@ -210,6 +213,7 @@ class BackupNotifier extends Notifier<BackupState> with WidgetsBindingObserver {
                 if (hasLocalData) {
                   debugPrint('[SYNC] Dados locais encontrados, fazendo upload em vez de download para proteger dados do usuário');
                   await _driveService.uploadBackup();
+                  didUpload = true;
                 } else {
                   debugPrint('[SYNC] Sem dados locais significativos, fazendo download...');
                   final success = await _driveService.downloadAndRestoreBackup();
@@ -238,12 +242,19 @@ class BackupNotifier extends Notifier<BackupState> with WidgetsBindingObserver {
           debugPrint('[SYNC] Não consegue determinar data local, fazendo upload por segurança...');
           // Não consegue determinar, faz upload por segurança
           await _driveService.uploadBackup();
+          didUpload = true;
         }
       }
 
-      // Atualiza status
-      final lastBackup = await _driveService.getLatestBackupDate();
-      debugPrint('[SYNC] Sincronização concluída. Último backup: $lastBackup');
+      // Atualiza status - se fez upload, usa data atual (o Drive pode demorar a atualizar modifiedTime)
+      DateTime? lastBackup;
+      if (didUpload) {
+        lastBackup = DateTime.now();
+        debugPrint('[SYNC] Upload realizado, usando data atual: $lastBackup');
+      } else {
+        lastBackup = await _driveService.getLatestBackupDate();
+        debugPrint('[SYNC] Sincronização concluída. Último backup: $lastBackup');
+      }
       state = state.copyWith(lastBackupDate: lastBackup);
     } catch (e) {
       debugPrint('[SYNC] Erro durante sincronização: $e');
@@ -318,7 +329,8 @@ class BackupNotifier extends Notifier<BackupState> with WidgetsBindingObserver {
     _lastManualSyncTime = DateTime.now();
     final success = await _driveService.uploadBackup();
     if (success) {
-      final lastBackup = await _driveService.getLatestBackupDate();
+      // Usa data atual em vez de buscar do Drive (pode demorar a atualizar)
+      final lastBackup = DateTime.now();
       state = state.copyWith(isUploading: false, lastBackupDate: lastBackup, lastSyncAttempt: DateTime.now());
     } else {
       state = state.copyWith(isUploading: false, errorMessage: 'Falha ao enviar backup');
@@ -346,7 +358,11 @@ class BackupNotifier extends Notifier<BackupState> with WidgetsBindingObserver {
   Future<void> refreshStatus() async {
     if (state.userEmail != null) {
       final lastBackup = await _driveService.getLatestBackupDate();
-      state = state.copyWith(lastBackupDate: lastBackup);
+      // Se o Drive retornar null mas temos uma data local, mantém a data local
+      // (pode ser latência do Drive em atualizar modifiedTime)
+      if (lastBackup != null || state.lastBackupDate == null) {
+        state = state.copyWith(lastBackupDate: lastBackup);
+      }
     }
   }
 }
