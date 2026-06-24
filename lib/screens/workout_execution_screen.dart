@@ -991,7 +991,6 @@ class _WorkoutExecutionScreenState extends ConsumerState<WorkoutExecutionScreen>
                                   onTap: () => _saveCurrentExercise(exercise.id!),
                                   child: Card(
                                     margin: EdgeInsets.all(isSuperSet ? 8 : 4),
-                                    color: isCurrentExercise ? Colors.blue.shade50 : null,
                                     elevation: isCurrentExercise ? 4 : 1,
                                     shape: RoundedRectangleBorder(
                                       side: isCurrentExercise 
