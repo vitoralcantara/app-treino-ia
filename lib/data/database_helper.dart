@@ -386,6 +386,12 @@ class DatabaseHelper {
   Future<int> createExercise(Exercise exercise) async {
     final db = await instance.database;
     
+    // Evitar duplicados pelo nome
+    final existing = await db.query('exercises', where: 'LOWER(name) = ?', whereArgs: [exercise.name.toLowerCase()], limit: 1);
+    if (existing.isNotEmpty) {
+      return existing.first['id'] as int;
+    }
+
     final exerciseMap = exercise.toJson();
     exerciseMap.remove('group_id');
     
@@ -445,9 +451,17 @@ class DatabaseHelper {
       int exerciseId = exercise.id ?? 0;
       
       if (exerciseId == 0) {
-         final exerciseMap = exercise.toJson();
-         exerciseMap.remove('group_id');
-         exerciseId = await db.insert('exercises', exerciseMap);
+        // Tentar encontrar exercício pelo nome para não duplicar e perder o histórico de pesos
+        final existing = await db.query('exercises', where: 'LOWER(name) = ?', whereArgs: [exercise.name.toLowerCase()], limit: 1);
+        
+        if (existing.isNotEmpty) {
+          exerciseId = existing.first['id'] as int;
+          // Opcionalmente: atualizar metadados se o exercício existente estiver incompleto
+        } else {
+          final exerciseMap = exercise.toJson();
+          exerciseMap.remove('group_id');
+          exerciseId = await db.insert('exercises', exerciseMap);
+        }
       }
 
       await db.insert('workout_exercises', {
