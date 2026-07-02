@@ -232,21 +232,21 @@ class WorkoutTimerNotifier extends Notifier<WorkoutTimerState> {
     final notificationService = NotificationService();
     await notificationService.requestNotificationPermission();
     
-    // Se o timer estiver no estado inicial, começa do tempo selecionado
-    if (state.seconds == 0) {
-      state = state.copyWith(seconds: state.selectedRestTime);
-    }
+    final int initialSeconds = state.seconds > 0 ? state.seconds : state.selectedRestTime;
+    final DateTime now = DateTime.now();
+    final DateTime target = now.add(Duration(seconds: initialSeconds));
     
     state = state.copyWith(
       isTimerRunning: true,
-      timerStartTime: DateTime.now(),
+      seconds: initialSeconds,
+      targetExpiryTime: target,
     );
 
     // Mostrar notificação em tempo real com o countdown
-    notificationService.showActiveTimerNotification(state.seconds, state.selectedRestTime);
+    notificationService.showActiveTimerNotification(initialSeconds, state.selectedRestTime);
 
     // Agendar notificação para o fim do tempo selecionado
-    notificationService.scheduleRestNotification(state.seconds);
+    notificationService.scheduleRestNotification(initialSeconds);
 
     _startPeriodicTimer();
   }
@@ -254,18 +254,25 @@ class WorkoutTimerNotifier extends Notifier<WorkoutTimerState> {
   void _startPeriodicTimer() {
     _timer?.cancel();
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      final newSeconds = state.seconds - 1;
-
-      // Atualizar notificação em tempo real
-      if (newSeconds > 0) {
-        NotificationService().updateTimerNotification(newSeconds);
+      if (state.targetExpiryTime == null) {
+        timer.cancel();
+        return;
       }
 
-      if (newSeconds <= 0) {
+      final now = DateTime.now();
+      final difference = state.targetExpiryTime!.difference(now).inSeconds;
+      final int remaining = difference > 0 ? difference : 0;
+
+      // Atualizar notificação em tempo real
+      if (remaining > 0) {
+        NotificationService().updateTimerNotification(remaining);
+      }
+
+      if (remaining <= 0) {
         pauseTimer();
         state = state.copyWith(seconds: 0);
       } else {
-        state = state.copyWith(seconds: newSeconds);
+        state = state.copyWith(seconds: remaining);
       }
     });
   }
@@ -275,14 +282,17 @@ class WorkoutTimerNotifier extends Notifier<WorkoutTimerState> {
     NotificationService().cancelAllNotifications();
     state = state.copyWith(
       isTimerRunning: false,
-      timerStartTime: null,
+      targetExpiryTime: null,
     );
   }
 
   void resetTimer() {
     _timer?.cancel();
     NotificationService().cancelAllNotifications();
-    state = WorkoutTimerState.initial().copyWith(selectedRestTime: state.selectedRestTime);
+    state = WorkoutTimerState.initial().copyWith(
+      selectedRestTime: state.selectedRestTime,
+      seconds: state.selectedRestTime, // Reset para o tempo padrão
+    );
   }
 
   void restartAndStartTimer() async {
@@ -293,10 +303,13 @@ class WorkoutTimerNotifier extends Notifier<WorkoutTimerState> {
     final notificationService = NotificationService();
     await notificationService.requestNotificationPermission();
     
-    // Começa do tempo selecionado (contagem decrescente)
-    state = WorkoutTimerState.initial().copyWith(
-      selectedRestTime: state.selectedRestTime,
+    final DateTime now = DateTime.now();
+    final DateTime target = now.add(Duration(seconds: state.selectedRestTime));
+
+    state = state.copyWith(
+      isTimerRunning: true,
       seconds: state.selectedRestTime,
+      targetExpiryTime: target,
     );
     
     // Mostrar notificação em tempo real com o countdown
@@ -304,12 +317,6 @@ class WorkoutTimerNotifier extends Notifier<WorkoutTimerState> {
 
     // Agendar notificação para o fim do tempo selecionado
     notificationService.scheduleRestNotification(state.selectedRestTime);
-
-    // Iniciar o timer automaticamente
-    state = state.copyWith(
-      isTimerRunning: true,
-      timerStartTime: DateTime.now(),
-    );
 
     _startPeriodicTimer();
   }
@@ -322,27 +329,28 @@ class WorkoutTimerNotifier extends Notifier<WorkoutTimerState> {
         seconds: newRestTime,
       );
     } else {
+      // Se estiver rodando, apenas atualiza a preferência para o próximo reinício
       state = state.copyWith(selectedRestTime: newRestTime);
     }
   }
 
   void handleAppLifecycleResumed() {
-    if (state.isTimerRunning && state.timerStartTime != null) {
-      // Recalcular o tempo decorrido enquanto o app estava em segundo plano
-      final elapsedSeconds = DateTime.now().difference(state.timerStartTime!).inSeconds;
-      final newSeconds = state.seconds - elapsedSeconds;
+    if (state.isTimerRunning && state.targetExpiryTime != null) {
+      final now = DateTime.now();
+      final difference = state.targetExpiryTime!.difference(now).inSeconds;
+      final int remaining = difference > 0 ? difference : 0;
 
       // Atualizar notificação com o tempo recalculado
-      if (newSeconds > 0) {
-        NotificationService().updateTimerNotification(newSeconds);
+      if (remaining > 0) {
+        NotificationService().updateTimerNotification(remaining);
       }
 
-      if (newSeconds <= 0) {
+      if (remaining <= 0) {
         pauseTimer();
         state = state.copyWith(seconds: 0);
       } else {
-        state = state.copyWith(seconds: newSeconds);
-        // Reiniciar o timer com o tempo atualizado
+        state = state.copyWith(seconds: remaining);
+        // Reiniciar o timer com o tempo sincronizado
         _startPeriodicTimer();
       }
     }
@@ -353,13 +361,13 @@ class WorkoutTimerState {
   final int seconds;
   final bool isTimerRunning;
   final int selectedRestTime;
-  final DateTime? timerStartTime;
+  final DateTime? targetExpiryTime;
 
   WorkoutTimerState({
     required this.seconds,
     required this.isTimerRunning,
     required this.selectedRestTime,
-    this.timerStartTime,
+    this.targetExpiryTime,
   });
 
   factory WorkoutTimerState.initial() {
@@ -367,7 +375,7 @@ class WorkoutTimerState {
       seconds: 0,
       isTimerRunning: false,
       selectedRestTime: 60,
-      timerStartTime: null,
+      targetExpiryTime: null,
     );
   }
 
@@ -375,13 +383,13 @@ class WorkoutTimerState {
     int? seconds,
     bool? isTimerRunning,
     int? selectedRestTime,
-    DateTime? timerStartTime,
+    DateTime? targetExpiryTime,
   }) {
     return WorkoutTimerState(
       seconds: seconds ?? this.seconds,
       isTimerRunning: isTimerRunning ?? this.isTimerRunning,
       selectedRestTime: selectedRestTime ?? this.selectedRestTime,
-      timerStartTime: timerStartTime ?? this.timerStartTime,
+      targetExpiryTime: targetExpiryTime ?? this.targetExpiryTime,
     );
   }
 }
