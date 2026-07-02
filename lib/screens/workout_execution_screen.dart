@@ -651,79 +651,6 @@ class _WorkoutExecutionScreenState extends ConsumerState<WorkoutExecutionScreen>
     );
   }
 
-  void _showExerciseInfo(Exercise exercise) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      builder: (context) => DraggableScrollableSheet(
-        expand: false,
-        initialChildSize: 0.6,
-        maxChildSize: 0.9,
-        builder: (context, scrollController) => SingleChildScrollView(
-          controller: scrollController,
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                exercise.name,
-                style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-              ),
-              if (exercise.category != null)
-                Text(
-                  exercise.category!,
-                  style: const TextStyle(color: Colors.blueAccent, fontWeight: FontWeight.w500),
-                ),
-              const Divider(height: 32),
-              if (exercise.instructions != null && exercise.instructions!.isNotEmpty) ...[
-                const Text(
-                  'Instruções:',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 8),
-                Text(exercise.instructions!),
-                const SizedBox(height: 24),
-              ],
-              if (exercise.videoUrl != null && exercise.videoUrl!.isNotEmpty) ...[
-                const Text(
-                  'Demonstração em Vídeo:',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 8),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton.icon(
-                    onPressed: () => _launchVideo(exercise.videoUrl!),
-                    icon: const Icon(Icons.play_circle_fill),
-                    label: const Text('Abrir Vídeo'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.blue.shade700,
-                      foregroundColor: Colors.white,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 24),
-              ],
-              if (exercise.imageUrl != null && exercise.imageUrl!.isNotEmpty) ...[
-                const Text(
-                  'Referência Visual:',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 8),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(12),
-                  child: exercise.imageUrl!.startsWith('http')
-                      ? Image.network(exercise.imageUrl!)
-                      : Image.file(File(exercise.imageUrl!)),
-                ),
-              ],
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
   void _showExerciseNotesDialog(Exercise exercise) {
     final controller = TextEditingController(text: exercise.workoutSpecificNotes);
 
@@ -1126,32 +1053,22 @@ class _WorkoutExecutionScreenState extends ConsumerState<WorkoutExecutionScreen>
                                                 ),
                                               ),
                                             Expanded(
-                                              child: Column(
-                                                crossAxisAlignment: CrossAxisAlignment.start,
-                                                children: [
-                                                  Row(
-                                                    children: [
-                                                      Expanded(
-                                                        child: Text(
-                                                          exercise.name,
-                                                          style: Theme.of(context).textTheme.titleLarge,
-                                                        ),
-                                                      ),
-                                                      IconButton(
-                                                        icon: const Icon(Icons.edit, size: 18, color: Colors.blueAccent),
-                                                        tooltip: 'Editar nome do exercício',
-                                                        onPressed: () => _showEditExerciseNameDialog(exercise),
-                                                        padding: EdgeInsets.zero,
-                                                        constraints: const BoxConstraints(),
-                                                      ),
-                                                    ],
-                                                  ),
-                                                  if (exercise.category != null)
+                                              child: InkWell(
+                                                onTap: () => _showEditExerciseNameDialog(exercise),
+                                                child: Column(
+                                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                                  children: [
                                                     Text(
-                                                      exercise.category!,
-                                                      style: const TextStyle(color: Colors.grey, fontSize: 12),
+                                                      exercise.name,
+                                                      style: Theme.of(context).textTheme.titleLarge,
                                                     ),
-                                                ],
+                                                    if (exercise.category != null)
+                                                      Text(
+                                                        exercise.category!,
+                                                        style: const TextStyle(color: Colors.grey, fontSize: 12),
+                                                      ),
+                                                  ],
+                                                ),
                                               ),
                                             ),
                                             if (exercise.videoUrl != null && exercise.videoUrl!.isNotEmpty)
@@ -1161,16 +1078,10 @@ class _WorkoutExecutionScreenState extends ConsumerState<WorkoutExecutionScreen>
                                                 onPressed: () => _launchVideo(exercise.videoUrl!),
                                               ),
                                             IconButton(
-                                              icon: const Icon(Icons.info_outline, color: Colors.blueAccent),
-                                              tooltip: 'Instruções',
-                                              onPressed: () => _showExerciseInfo(exercise),
-                                            ),
-                                            IconButton(
                                               icon: const Icon(Icons.edit_note, color: Colors.blueAccent),
                                               tooltip: 'Observações do treino',
                                               onPressed: () => _showExerciseNotesDialog(exercise),
                                             ),
-
                                             IconButton(
                                               icon: const Icon(Icons.history, color: Colors.blueAccent),
                                               tooltip: 'Histórico de Cargas',
