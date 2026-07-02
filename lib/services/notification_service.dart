@@ -88,15 +88,17 @@ class NotificationService {
       body: 'Tempo restante: $timeString',
       notificationDetails: NotificationDetails(
         android: AndroidNotificationDetails(
-          'rest_timer_channel',
-          'Temporizador de Descanso',
-          channelDescription: 'Notificações de fim de descanso no treino',
-          importance: Importance.high,
-          priority: Priority.high,
+          'rest_timer_active_channel', // Canal separado para o timer ativo
+          'Cronômetro de Descanso',
+          channelDescription: 'Atualizações em tempo real do cronômetro',
+          importance: Importance.low, // Baixa importância para não fazer barulho/pop-up
+          priority: Priority.low,
           ongoing: true, // Faz a notificação ficar constante
           autoCancel: false,
           showWhen: false,
           onlyAlertOnce: true, // Evita som/vibração a cada atualização
+          playSound: false,
+          enableVibration: false,
         ),
         iOS: DarwinNotificationDetails(
           presentAlert: false,
@@ -118,15 +120,17 @@ class NotificationService {
       body: 'Tempo restante: $timeString',
       notificationDetails: NotificationDetails(
         android: AndroidNotificationDetails(
-          'rest_timer_channel',
-          'Temporizador de Descanso',
-          channelDescription: 'Notificações de fim de descanso no treino',
-          importance: Importance.high,
-          priority: Priority.high,
+          'rest_timer_active_channel',
+          'Cronômetro de Descanso',
+          channelDescription: 'Atualizações em tempo real do cronômetro',
+          importance: Importance.low,
+          priority: Priority.low,
           ongoing: true,
           autoCancel: false,
           showWhen: false,
           onlyAlertOnce: true,
+          playSound: false,
+          enableVibration: false,
         ),
         iOS: DarwinNotificationDetails(
           presentAlert: false,
