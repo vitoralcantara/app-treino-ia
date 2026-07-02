@@ -170,12 +170,32 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           ),
           actions: [
             if (_selectedIndex == 0)
-              IconButton(
+              PopupMenuButton<String>(
                 icon: const Icon(Icons.share),
-                tooltip: 'Exportar Rotina (TXT)',
-                onPressed: () {
-                  ref.read(workoutListProvider.notifier).exportActiveRoutineAsTxt();
+                tooltip: 'Exportar Rotina',
+                onSelected: (value) {
+                  if (value == 'txt') {
+                    ref.read(workoutListProvider.notifier).exportActiveRoutineAsTxt();
+                  } else if (value == 'doc') {
+                    ref.read(workoutListProvider.notifier).exportActiveRoutineAsDoc();
+                  }
                 },
+                itemBuilder: (context) => [
+                  const PopupMenuItem(
+                    value: 'txt',
+                    child: ListTile(
+                      leading: Icon(Icons.description_outlined),
+                      title: Text('Exportar como TXT'),
+                    ),
+                  ),
+                  const PopupMenuItem(
+                    value: 'doc',
+                    child: ListTile(
+                      leading: Icon(Icons.article_outlined),
+                      title: Text('Exportar como Word (.doc)'),
+                    ),
+                  ),
+                ],
               ),
           ],
         ),

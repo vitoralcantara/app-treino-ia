@@ -59,10 +59,34 @@ class _ArchivedWorkoutsScreenState extends ConsumerState<ArchivedWorkoutsScreen>
                         trailing: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            IconButton(
+                            PopupMenuButton<String>(
                               icon: const Icon(Icons.share, size: 20, color: Colors.blueGrey),
-                              tooltip: 'Exportar TXT',
-                              onPressed: () => RoutineExportService.exportRoutineAsTxt(routine),
+                              tooltip: 'Exportar Rotina',
+                              onSelected: (value) {
+                                if (value == 'txt') {
+                                  RoutineExportService.exportRoutineAsTxt(routine);
+                                } else if (value == 'doc') {
+                                  RoutineExportService.exportRoutineAsDoc(routine);
+                                }
+                              },
+                              itemBuilder: (context) => [
+                                const PopupMenuItem(
+                                  value: 'txt',
+                                  child: ListTile(
+                                    dense: true,
+                                    leading: Icon(Icons.description_outlined, size: 20),
+                                    title: Text('TXT', style: TextStyle(fontSize: 13)),
+                                  ),
+                                ),
+                                const PopupMenuItem(
+                                  value: 'doc',
+                                  child: ListTile(
+                                    dense: true,
+                                    leading: Icon(Icons.article_outlined, size: 20),
+                                    title: Text('Word (.doc)', style: TextStyle(fontSize: 13)),
+                                  ),
+                                ),
+                              ],
                             ),
                             ElevatedButton(
                               onPressed: () => _restoreRoutine(routine),

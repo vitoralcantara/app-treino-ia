@@ -64,6 +64,14 @@ class WorkoutListNotifier extends Notifier<List<Workout>> {
     }
   }
 
+  Future<void> exportActiveRoutineAsDoc() async {
+    final db = ref.read(databaseProvider);
+    final fullRoutine = await db.getActiveRoutine(includeWorkouts: true);
+    if (fullRoutine != null) {
+      await RoutineExportService.exportRoutineAsDoc(fullRoutine);
+    }
+  }
+
   Future<Map<String, dynamic>> getRoutineProgress() async {
     final db = ref.read(databaseProvider);
     final active = await db.getActiveRoutine();
