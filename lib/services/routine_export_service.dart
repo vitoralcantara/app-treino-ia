@@ -41,14 +41,19 @@ class RoutineExportService {
           
           if (ex.suggestedSets != null || ex.suggestedReps != null || ex.suggestedRepsList != null) {
             String target = '   Meta: ';
-            if (ex.suggestedSets != null) target += '${ex.suggestedSets} séries';
-            if (ex.suggestedReps != null) target += ' x ${ex.suggestedReps} reps';
-            else if (ex.suggestedRepsList != null) target += ' x [${ex.suggestedRepsList}] reps';
+            if (ex.suggestedSets != null) {
+              target += '${ex.suggestedSets} séries';
+            }
+            if (ex.suggestedReps != null) {
+              target += ' x ${ex.suggestedReps} reps';
+            } else if (ex.suggestedRepsList != null) {
+              target += ' x [${ex.suggestedRepsList}] reps';
+            }
             sb.writeln(target);
           }
 
-          if (ex.technique != null && ex.technique!.isNotEmpty) {
-            sb.writeln('   Técnica: ${ex.technique}');
+          if (ex.suggestedTechnique != null && ex.suggestedTechnique!.isNotEmpty) {
+            sb.writeln('   Técnica: ${ex.suggestedTechnique}');
           }
 
           if (ex.workoutSpecificNotes != null && ex.workoutSpecificNotes!.isNotEmpty) {
@@ -63,9 +68,11 @@ class RoutineExportService {
     sb.writeln('Gerado por: Power - App de Treino IA');
     sb.writeln('========================================');
 
-    await Share.share(
-      sb.toString(),
-      subject: 'Minha Rotina de Treino: ${routine.name}',
+    await SharePlus.instance.share(
+      ShareParams(
+        text: sb.toString(),
+        subject: 'Minha Rotina de Treino: ${routine.name}',
+      ),
     );
   }
 
@@ -99,13 +106,22 @@ class RoutineExportService {
         for (int i = 0; i < workout.exercises.length; i++) {
           final ex = workout.exercises[i];
           String target = '';
-          if (ex.suggestedSets != null) target += '${ex.suggestedSets} séries';
-          if (ex.suggestedReps != null) target += ' x ${ex.suggestedReps} reps';
-          else if (ex.suggestedRepsList != null) target += ' x [${ex.suggestedRepsList}] reps';
+          if (ex.suggestedSets != null) {
+            target += '${ex.suggestedSets} séries';
+          }
+          if (ex.suggestedReps != null) {
+            target += ' x ${ex.suggestedReps} reps';
+          } else if (ex.suggestedRepsList != null) {
+            target += ' x [${ex.suggestedRepsList}] reps';
+          }
 
           String notes = '';
-          if (ex.technique != null && ex.technique!.isNotEmpty) notes += '<strong>Técnica:</strong> ${ex.technique}<br>';
-          if (ex.workoutSpecificNotes != null && ex.workoutSpecificNotes!.isNotEmpty) notes += '<strong>Notas:</strong> ${ex.workoutSpecificNotes}';
+          if (ex.suggestedTechnique != null && ex.suggestedTechnique!.isNotEmpty) {
+            notes += '<strong>Técnica:</strong> ${ex.suggestedTechnique}<br>';
+          }
+          if (ex.workoutSpecificNotes != null && ex.workoutSpecificNotes!.isNotEmpty) {
+            notes += '<strong>Notas:</strong> ${ex.workoutSpecificNotes}';
+          }
 
           sb.writeln('<tr>');
           sb.writeln('<td style="padding: 8px; text-align: center;">${i + 1}</td>');
@@ -129,9 +145,11 @@ class RoutineExportService {
 
     await file.writeAsBytes(utf8.encode(sb.toString()));
 
-    await Share.shareXFiles(
-      [XFile(file.path)],
-      subject: 'Minha Rotina de Treino: ${routine.name}',
+    await SharePlus.instance.share(
+      ShareParams(
+        files: [XFile(file.path)],
+        subject: 'Minha Rotina de Treino: ${routine.name}',
+      ),
     );
   }
 
