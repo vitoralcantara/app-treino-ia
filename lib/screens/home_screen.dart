@@ -28,6 +28,32 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     super.initState();
     _checkDisclaimer();
     _checkBackupReminder();
+    _checkActiveWorkout();
+  }
+
+  Future<void> _checkActiveWorkout() async {
+    // Aguarda o próximo frame para navegar
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
+      
+      final prefs = await SharedPreferences.getInstance();
+      final activeWorkoutId = prefs.getInt('active_workout_id');
+      
+      if (activeWorkoutId != null) {
+        final workouts = ref.read(workoutListProvider);
+        final activeWorkout = workouts.where((w) => w.id == activeWorkoutId).firstOrNull;
+        
+        if (activeWorkout != null && mounted) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => WorkoutExecutionScreen(workout: activeWorkout)),
+          );
+        } else if (mounted) {
+          // Se o ID for inválido, limpa para evitar loops
+          await prefs.remove('active_workout_id');
+        }
+      }
+    });
   }
 
   Future<void> _checkDisclaimer() async {
