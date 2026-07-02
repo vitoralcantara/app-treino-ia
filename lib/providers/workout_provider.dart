@@ -8,6 +8,7 @@ import '../models/workout_session.dart';
 import '../models/routine.dart';
 import 'backup_provider.dart';
 import '../services/notification_service.dart';
+import '../services/routine_export_service.dart';
 
 final databaseProvider = Provider((ref) => DatabaseHelper.instance);
 
@@ -53,6 +54,14 @@ class WorkoutListNotifier extends Notifier<List<Workout>> {
   Future<List<Routine>> getArchivedRoutines() async {
     final db = ref.read(databaseProvider);
     return await db.getArchivedRoutines();
+  }
+
+  Future<void> exportActiveRoutineAsTxt() async {
+    final db = ref.read(databaseProvider);
+    final fullRoutine = await db.getActiveRoutine(includeWorkouts: true);
+    if (fullRoutine != null) {
+      await RoutineExportService.exportRoutineAsTxt(fullRoutine);
+    }
   }
 
   Future<Map<String, dynamic>> getRoutineProgress() async {

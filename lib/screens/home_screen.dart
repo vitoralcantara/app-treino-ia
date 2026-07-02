@@ -168,6 +168,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               );
             },
           ),
+          actions: [
+            if (_selectedIndex == 0)
+              IconButton(
+                icon: const Icon(Icons.share),
+                tooltip: 'Exportar Rotina (TXT)',
+                onPressed: () {
+                  ref.read(workoutListProvider.notifier).exportActiveRoutineAsTxt();
+                },
+              ),
+          ],
         ),
         body: IndexedStack(
         index: _selectedIndex,

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/routine.dart';
 import '../providers/workout_provider.dart';
+import '../services/routine_export_service.dart';
 
 class ArchivedWorkoutsScreen extends ConsumerStatefulWidget {
   const ArchivedWorkoutsScreen({super.key});
@@ -55,13 +56,24 @@ class _ArchivedWorkoutsScreenState extends ConsumerState<ArchivedWorkoutsScreen>
                           '${routine.workouts.length} treinos • $totalExercises exercícios • ${_formatDate(routine.createdAt)}',
                           style: const TextStyle(fontSize: 12),
                         ),
-                        trailing: ElevatedButton(
-                          onPressed: () => _restoreRoutine(routine),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-                            padding: const EdgeInsets.symmetric(horizontal: 12),
-                          ),
-                          child: const Text('Retomar Esta'),
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            IconButton(
+                              icon: const Icon(Icons.share, size: 20, color: Colors.blueGrey),
+                              tooltip: 'Exportar TXT',
+                              onPressed: () => RoutineExportService.exportRoutineAsTxt(routine),
+                            ),
+                            ElevatedButton(
+                              onPressed: () => _restoreRoutine(routine),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+                                padding: const EdgeInsets.symmetric(horizontal: 8),
+                                minimumSize: const Size(60, 32),
+                              ),
+                              child: const Text('Retomar', style: TextStyle(fontSize: 11)),
+                            ),
+                          ],
                         ),
                         children: routine.workouts.map((w) => ListTile(
                           dense: true,

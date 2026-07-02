@@ -317,11 +317,37 @@ class DatabaseHelper {
     );
   }
 
-  Future<Routine?> getActiveRoutine() async {
+  Future<Routine?> getActiveRoutine({bool includeWorkouts = false}) async {
     final db = await instance.database;
     final result = await db.query('routines', where: 'is_active = 1', limit: 1);
     if (result.isEmpty) return null;
-    return Routine.fromJson(result.first);
+    
+    final routine = Routine.fromJson(result.first);
+    if (!includeWorkouts) return routine;
+
+    final id = routine.id!;
+    final workoutsRows = await db.query('workouts', where: 'routine_id = ?', whereArgs: [id]);
+    
+    final List<Workout> workouts = [];
+    for (var wRow in workoutsRows) {
+      final wId = wRow['id'] as int;
+      final exercisesRows = await db.rawQuery('''
+        SELECT e.*, we.notes, we.group_id FROM exercises e
+        JOIN workout_exercises we ON e.id = we.exercise_id
+        WHERE we.workout_id = ?
+        ORDER BY we.position
+      ''', [wId]);
+      
+      workouts.add(Workout(
+        id: wId,
+        routineId: id,
+        name: wRow['name'] as String,
+        isActive: true,
+        exercises: exercisesRows.map((e) => Exercise.fromJson(e)).toList(),
+      ));
+    }
+
+    return routine.copyWith(workouts: workouts);
   }
 
   Future<void> archiveCurrentRoutine() async {
