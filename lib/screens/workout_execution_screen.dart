@@ -763,10 +763,68 @@ class _WorkoutExecutionScreenState extends ConsumerState<WorkoutExecutionScreen>
                       isAvailable: exercise.isAvailable,
                       suggestedSets: exercise.suggestedSets,
                       suggestedReps: exercise.suggestedReps,
+                      suggestedRepsList: exercise.suggestedRepsList,
                       workoutSpecificNotes: controller.text,
                       groupId: exercise.groupId,
                       suggestedTechnique: exercise.suggestedTechnique,
                     );
+                  }
+                });
+                Navigator.of(context).pop();
+              }
+            },
+            child: const Text('Salvar'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showEditExerciseNameDialog(Exercise exercise) {
+    final controller = TextEditingController(text: exercise.name);
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Editar Nome do Exercício'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          decoration: const InputDecoration(
+            hintText: 'Ex: Supino Inclinado com Halteres',
+            border: OutlineInputBorder(),
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')),
+          ElevatedButton(
+            onPressed: () async {
+              if (controller.text.trim().isEmpty) return;
+
+              final updatedExercise = Exercise(
+                id: exercise.id,
+                name: controller.text.trim(),
+                category: exercise.category,
+                instructions: exercise.instructions,
+                imageUrl: exercise.imageUrl,
+                videoUrl: exercise.videoUrl,
+                isAvailable: exercise.isAvailable,
+                suggestedSets: exercise.suggestedSets,
+                suggestedReps: exercise.suggestedReps,
+                suggestedRepsList: exercise.suggestedRepsList,
+                workoutSpecificNotes: exercise.workoutSpecificNotes,
+                groupId: exercise.groupId,
+                suggestedTechnique: exercise.suggestedTechnique,
+              );
+
+              // Atualizar no banco de dados (biblioteca global)
+              await ref.read(exerciseListProvider.notifier).updateExercise(updatedExercise);
+
+              if (context.mounted) {
+                setState(() {
+                  final index = _dynamicExercises.indexWhere((e) => e.id == exercise.id);
+                  if (index != -1) {
+                    _dynamicExercises[index] = updatedExercise;
                   }
                 });
                 Navigator.of(context).pop();
@@ -1071,9 +1129,22 @@ class _WorkoutExecutionScreenState extends ConsumerState<WorkoutExecutionScreen>
                                               child: Column(
                                                 crossAxisAlignment: CrossAxisAlignment.start,
                                                 children: [
-                                                  Text(
-                                                    exercise.name,
-                                                    style: Theme.of(context).textTheme.titleLarge,
+                                                  Row(
+                                                    children: [
+                                                      Expanded(
+                                                        child: Text(
+                                                          exercise.name,
+                                                          style: Theme.of(context).textTheme.titleLarge,
+                                                        ),
+                                                      ),
+                                                      IconButton(
+                                                        icon: const Icon(Icons.edit, size: 18, color: Colors.blueAccent),
+                                                        tooltip: 'Editar nome do exercício',
+                                                        onPressed: () => _showEditExerciseNameDialog(exercise),
+                                                        padding: EdgeInsets.zero,
+                                                        constraints: const BoxConstraints(),
+                                                      ),
+                                                    ],
                                                   ),
                                                   if (exercise.category != null)
                                                     Text(
