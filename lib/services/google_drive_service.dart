@@ -256,7 +256,7 @@ class GoogleDriveService {
       final fileList = await driveApi.files.list(
         spaces: 'appDataFolder',
         q: "name = 'treino_ia_backup.zip'",
-        fields: 'files(id, name, modifiedTime, appProperties)',
+        $fields: 'files(id, name, modifiedTime, appProperties)',
       );
 
       if (fileList.files == null || fileList.files!.isEmpty) return null;
