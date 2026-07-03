@@ -14,6 +14,9 @@ class GoogleDriveService {
   GoogleDriveService._internal();
 
   final GoogleSignIn _googleSignIn = GoogleSignIn(
+    clientId: Platform.isIOS || Platform.isMacOS 
+      ? '894878362751-vmficjmuimccgor35pcdk7nao8htgi99.apps.googleusercontent.com' 
+      : null,
     scopes: [
       drive.DriveApi.driveAppdataScope,
     ],
@@ -127,10 +130,12 @@ class GoogleDriveService {
         return false;
       }
 
-      // Procurar por backup anterior na appDataFolder
+      // Procurar por backup anterior na appDataFolder, ordenando pelo mais recente
       final fileList = await driveApi.files.list(
         spaces: 'appDataFolder',
         q: "name = 'treino_ia_backup.zip'",
+        orderBy: 'modifiedTime desc',
+        $fields: 'files(id, name, modifiedTime, appProperties, properties)',
       );
 
       final driveFile = drive.File();
@@ -141,6 +146,7 @@ class GoogleDriveService {
         'workouts_count': workoutsCount,
         'sessions_count': sessionsCount,
         'sync_timestamp': timestamp,
+        'timestamp': timestamp, // Compatibilidade com versões antigas
       };
       driveFile.appProperties = props;
       driveFile.properties = props;
@@ -185,6 +191,8 @@ class GoogleDriveService {
       final fileList = await driveApi.files.list(
         spaces: 'appDataFolder',
         q: "name = 'treino_ia_backup.zip'",
+        orderBy: 'modifiedTime desc',
+        $fields: 'files(id, name, modifiedTime, appProperties, properties)',
       );
 
       if (fileList.files == null || fileList.files!.isEmpty) {
@@ -267,6 +275,7 @@ class GoogleDriveService {
       final fileList = await driveApi.files.list(
         spaces: 'appDataFolder',
         q: "name = 'treino_ia_backup.zip'",
+        orderBy: 'modifiedTime desc',
         $fields: 'files(id, name, modifiedTime, appProperties, properties)',
       );
 

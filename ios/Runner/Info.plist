@@ -48,16 +48,16 @@
 			<string>Editor</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
-				<string>com.googleusercontent.apps.894878362751-soa4heve32ju1lfl4diddo2fgmqcnt05</string>
+				<string>com.googleusercontent.apps.894878362751-vmficjmuimccgor35pcdk7nao8htgi99</string>
 			</array>
 		</dict>
 	</array>
 	<key>CFBundleVersion</key>
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>CLIENT_ID</key>
-	<string>894878362751-soa4heve32ju1lfl4diddo2fgmqcnt05.apps.googleusercontent.com</string>
+	<string>894878362751-vmficjmuimccgor35pcdk7nao8htgi99.apps.googleusercontent.com</string>
 	<key>GIDClientID</key>
-	<string>894878362751-soa4heve32ju1lfl4diddo2fgmqcnt05.apps.googleusercontent.com</string>
+	<string>894878362751-vmficjmuimccgor35pcdk7nao8htgi99.apps.googleusercontent.com</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>NSCameraUsageDescription</key>
@@ -67,7 +67,7 @@
 	<key>PLIST_VERSION</key>
 	<string>1</string>
 	<key>REVERSED_CLIENT_ID</key>
-	<string>com.googleusercontent.apps.894878362751-soa4heve32ju1lfl4diddo2fgmqcnt05</string>
+	<string>com.googleusercontent.apps.894878362751-vmficjmuimccgor35pcdk7nao8htgi99</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

@@ -209,15 +209,17 @@ class BackupNotifier extends Notifier<BackupState> with WidgetsBindingObserver {
         final localLastModified = await _getLocalDatabaseLastModified();
 
         if (localLastModified != null) {
-          debugPrint('[SYNC] Última modificação local: $localLastModified');
-          final timeDifference = cloudBackupDate.difference(localLastModified);
-          debugPrint('[SYNC] Diferença de tempo: ${timeDifference.inMinutes} minutos');
+          debugPrint('[SYNC] Última modificação local: $localLastModified (UTC: ${localLastModified.toUtc()})');
+          debugPrint('[SYNC] Última modificação nuvem: $cloudBackupDate (UTC: ${cloudBackupDate.toUtc()})');
+          
+          final timeDifference = cloudBackupDate.toUtc().difference(localLastModified.toUtc());
+          debugPrint('[SYNC] Diferença de tempo (nuvem - local): ${timeDifference.inMinutes} minutos');
 
           // Se a nuvem é mais recente por mais de 1 minuto, baixa
           // Se local é mais recente por mais de 1 minuto, sobe
           if (timeDifference.abs() > const Duration(minutes: 1)) {
             if (timeDifference.isNegative) {
-              debugPrint('[SYNC] Local é mais recente, verificando se há dados locais para upload...');
+              debugPrint('[SYNC] Local é mais recente (${timeDifference.inMinutes.abs()} min), verificando se há dados locais para upload...');
               final hasLocalData = await _hasSignificantLocalData();
               if (hasLocalData) {
                 debugPrint('[SYNC] Dados locais significativos encontrados, fazendo upload...');
