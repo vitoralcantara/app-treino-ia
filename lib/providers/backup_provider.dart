@@ -200,10 +200,23 @@ class BackupNotifier extends Notifier<BackupState> with WidgetsBindingObserver {
           // Se local é mais recente por mais de 1 minuto, sobe
           if (timeDifference.abs() > const Duration(minutes: 1)) {
             if (timeDifference.isNegative) {
-              debugPrint('[SYNC] Local é mais recente, fazendo upload...');
-              // Local é mais recente, faz upload
-              await _driveService.uploadBackup();
-              didUpload = true;
+              debugPrint('[SYNC] Local é mais recente, verificando se há dados locais para upload...');
+              // Verificar se há dados locais significativos antes de sobrescrever a nuvem
+              final hasLocalData = await _hasSignificantLocalData();
+              if (hasLocalData) {
+                debugPrint('[SYNC] Dados locais encontrados, fazendo upload...');
+                await _driveService.uploadBackup();
+                didUpload = true;
+              } else {
+                debugPrint('[SYNC] Local é mais recente mas está vazio. Forçando download da nuvem para recuperar dados.');
+                final success = await _driveService.downloadAndRestoreBackup();
+                if (success) {
+                  ref.invalidate(workoutListProvider);
+                  ref.invalidate(exerciseListProvider);
+                  ref.invalidate(sessionListProvider);
+                  ref.invalidate(routineProgressProvider);
+                }
+              }
             } else {
               // Nuvem é mais recente - verifica se é primeira sincronização
               if (state.lastBackupDate == null) {
