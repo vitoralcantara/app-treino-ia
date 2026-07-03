@@ -488,11 +488,14 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         children: [
                           const Icon(Icons.sync, size: 20),
                           const SizedBox(width: 8),
-                          const Text(
-                            'Sincronização Automática',
-                            style: TextStyle(fontWeight: FontWeight.bold),
+                          const Expanded(
+                            child: Text(
+                              'Sincronização Automática',
+                              style: TextStyle(fontWeight: FontWeight.bold),
+                              overflow: TextOverflow.ellipsis,
+                            ),
                           ),
-                          const Spacer(),
+                          const SizedBox(width: 4),
                           // Indicador visual de status de sincronização
                           if (backupState.isAutoSyncing)
                             Row(
