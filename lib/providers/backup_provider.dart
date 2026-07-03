@@ -290,8 +290,10 @@ class BackupNotifier extends Notifier<BackupState> with WidgetsBindingObserver {
 
       debugPrint('[SYNC] Dados locais: ${workouts.length} treinos, ${exercises.length} exercícios, ${sessions.length} sessões');
 
-      // Considera dados significativos se houver pelo menos um treino ou exercício
-      return workouts.isNotEmpty || exercises.isNotEmpty;
+      // Considera dados significativos apenas se houver treinos criados ou sessões registradas.
+      // Ignoramos a contagem de exercícios pois o app inicia com 6 exercícios padrão (seed),
+      // o que poderia disparar um upload falso em uma instalação limpa, sobrescrevendo o backup da nuvem.
+      return workouts.isNotEmpty || sessions.isNotEmpty;
     } catch (e) {
       debugPrint('[SYNC] Erro ao verificar dados locais: $e');
       return false;

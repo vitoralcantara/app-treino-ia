@@ -87,7 +87,17 @@ class GoogleDriveService {
 
       // Criar metadados JSON
       final dbFile = File(dbPath);
+      debugPrint('[BACKUP] Gerando metadados...');
       final lastModified = await dbFile.lastModified();
+
+      // Buscar dados reais para logar o que está sendo salvo
+      final db = await DatabaseHelper.instance.database;
+      final workouts = await db.query('workouts');
+      final sessions = await db.query('workout_sessions');
+      debugPrint('[BACKUP] Conteúdo que será salvo: ${workouts.length} treinos e ${sessions.length} sessões.');
+      if (workouts.isNotEmpty) {
+        debugPrint('[BACKUP] Exemplo de treinos: ${workouts.map((w) => w['name']).take(3).toList()}');
+      }
 
       final backupMetadata = {
         'version': '2.0',
@@ -95,6 +105,10 @@ class GoogleDriveService {
         'databaseModified': lastModified.toIso8601String(),
         'platform': Platform.operatingSystem,
         'appVersion': '1.0.0',
+        'content_summary': {
+          'workouts_count': workouts.length,
+          'sessions_count': sessions.length,
+        }
       };
 
       final jsonBytes = utf8.encode(jsonEncode(backupMetadata));
@@ -209,6 +223,19 @@ class GoogleDriveService {
 
       debugPrint('[RESTORE] Restaurando banco de dados...');
       await DatabaseHelper.instance.overwriteDatabase(dbFile.path);
+
+      // Logar conteúdo restaurado para depuração
+      try {
+        final db = await DatabaseHelper.instance.database;
+        final workouts = await db.query('workouts');
+        final sessions = await db.query('workout_sessions');
+        debugPrint('[RESTORE] Dados carregados após restore: ${workouts.length} treinos, ${sessions.length} sessões');
+        if (workouts.isNotEmpty) {
+          debugPrint('[RESTORE] Nomes dos treinos restaurados: ${workouts.map((w) => w['name']).toList()}');
+        }
+      } catch (e) {
+        debugPrint('[RESTORE] Aviso: Não foi possível ler o banco após o restore para log: $e');
+      }
 
       // Limpar temporário
       await dbFile.parent.delete(recursive: true);
