@@ -94,14 +94,19 @@ class GoogleDriveService {
       final db = await DatabaseHelper.instance.database;
       final workouts = await db.query('workouts');
       final sessions = await db.query('workout_sessions');
-      debugPrint('[BACKUP] Conteúdo que será salvo: ${workouts.length} treinos e ${sessions.length} sessões.');
+      
+      final workoutsCount = workouts.length.toString();
+      final sessionsCount = sessions.length.toString();
+      final timestamp = DateTime.now().toIso8601String();
+
+      debugPrint('[BACKUP] Conteúdo que será salvo: $workoutsCount treinos e $sessionsCount sessões.');
       if (workouts.isNotEmpty) {
         debugPrint('[BACKUP] Exemplo de treinos: ${workouts.map((w) => w['name']).take(3).toList()}');
       }
 
       final backupMetadata = {
         'version': '2.0',
-        'timestamp': DateTime.now().toIso8601String(),
+        'timestamp': timestamp,
         'databaseModified': lastModified.toIso8601String(),
         'platform': Platform.operatingSystem,
         'appVersion': '1.0.0',
@@ -130,11 +135,17 @@ class GoogleDriveService {
 
       final driveFile = drive.File();
       driveFile.name = 'treino_ia_backup.zip';
-      driveFile.appProperties = {
-        'workouts_count': workouts.length.toString(),
-        'sessions_count': sessions.length.toString(),
-        'timestamp': DateTime.now().toIso8601String(),
+      
+      // Usar propriedades redundantes para garantir visibilidade
+      final props = {
+        'workouts_count': workoutsCount,
+        'sessions_count': sessionsCount,
+        'sync_timestamp': timestamp,
       };
+      driveFile.appProperties = props;
+      driveFile.properties = props;
+
+      debugPrint('[BACKUP] Propriedades que serão enviadas: $props');
 
       final media = drive.Media(
         Stream.fromIterable([zipData]),
@@ -145,7 +156,7 @@ class GoogleDriveService {
         debugPrint('[BACKUP] Atualizando arquivo existente no Drive...');
         final existingFileId = fileList.files!.first.id!;
         
-        // No update do v3, enviamos o objeto driveFile com o nome e as appProperties
+        // No update do v3, enviamos o objeto driveFile com o nome e as propriedades
         await driveApi.files.update(driveFile, existingFileId, uploadMedia: media);
       } else {
         debugPrint('[BACKUP] Criando novo arquivo no Drive...');
@@ -256,14 +267,19 @@ class GoogleDriveService {
       final fileList = await driveApi.files.list(
         spaces: 'appDataFolder',
         q: "name = 'treino_ia_backup.zip'",
-        $fields: 'files(id, name, modifiedTime, appProperties)',
+        $fields: 'files(id, name, modifiedTime, appProperties, properties)',
       );
 
       if (fileList.files == null || fileList.files!.isEmpty) return null;
 
-      return fileList.files!.first;
+      final file = fileList.files!.first;
+      debugPrint('[DRIVE] Arquivo detectado: ${file.name}, ID: ${file.id}');
+      debugPrint('[DRIVE] appProperties: ${file.appProperties}');
+      debugPrint('[DRIVE] properties: ${file.properties}');
+      
+      return file;
     } catch (e) {
-      debugPrint('[BACKUP] Erro ao buscar arquivo do backup: $e');
+      debugPrint('[DRIVE] Erro ao buscar arquivo do backup: $e');
       return null;
     }
   }
