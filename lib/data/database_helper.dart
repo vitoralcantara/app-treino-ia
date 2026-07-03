@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 import '../models/exercise.dart';
@@ -652,8 +653,23 @@ class DatabaseHelper {
 
   /// Garante que todos os dados do log (WAL) sejam gravados no arquivo principal .db
   Future<void> checkpoint() async {
-    final db = await instance.database;
-    await db.execute('PRAGMA wal_checkpoint(FULL)');
+    try {
+      final db = await instance.database;
+      // Tentamos usar execute primeiro. Em algumas versões do Android/sqflite, 
+      // PRAGMA wal_checkpoint pode requerer execute ou rawQuery dependendo do driver.
+      // Adicionamos o ponto e vírgula para maior compatibilidade.
+      await db.execute('PRAGMA wal_checkpoint(FULL);');
+      debugPrint('[DB] Checkpoint (execute) executado com sucesso.');
+    } catch (e) {
+      debugPrint('[DB] Erro no checkpoint (execute), tentando rawQuery: $e');
+      try {
+        final db = await instance.database;
+        await db.rawQuery('PRAGMA wal_checkpoint(FULL);');
+        debugPrint('[DB] Checkpoint (rawQuery) executado com sucesso.');
+      } catch (e2) {
+        debugPrint('[DB] Erro final no checkpoint (pode ser ignorado): $e2');
+      }
+    }
   }
 
   Future<void> overwriteDatabase(String newPath) async {
