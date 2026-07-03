@@ -65,6 +65,10 @@ class GoogleDriveService {
         return false;
       }
 
+      // Garantir que os dados do WAL sejam movidos para o arquivo principal .db
+      debugPrint('[BACKUP] Executando checkpoint do SQLite...');
+      await DatabaseHelper.instance.checkpoint();
+
       final dbPath = await DatabaseHelper.instance.getDatabasePath();
       final file = File(dbPath);
 

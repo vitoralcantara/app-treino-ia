@@ -650,9 +650,30 @@ class DatabaseHelper {
     }
   }
 
+  /// Garante que todos os dados do log (WAL) sejam gravados no arquivo principal .db
+  Future<void> checkpoint() async {
+    final db = await instance.database;
+    await db.execute('PRAGMA wal_checkpoint(FULL)');
+  }
+
   Future<void> overwriteDatabase(String newPath) async {
     await closeDatabase();
+    
     final dbPath = await getDatabasePath();
+    
+    // Remover arquivos auxiliares do SQLite (WAL e SHM) se existirem
+    // Isso é crucial para que o SQLite não tente recuperar dados do log antigo
+    // sobre o banco de dados novo.
+    final walFile = File('$dbPath-wal');
+    final shmFile = File('$dbPath-shm');
+    
+    if (await walFile.exists()) {
+      await walFile.delete();
+    }
+    if (await shmFile.exists()) {
+      await shmFile.delete();
+    }
+
     final newFile = File(newPath);
     await newFile.copy(dbPath);
     // O banco será reaberto automaticamente na próxima chamada a 'database'

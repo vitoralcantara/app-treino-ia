@@ -4,6 +4,7 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../services/google_drive_service.dart';
 import '../data/database_helper.dart';
+import 'profile_provider.dart';
 import 'settings_provider.dart';
 import 'workout_provider.dart';
 
@@ -215,6 +216,7 @@ class BackupNotifier extends Notifier<BackupState> with WidgetsBindingObserver {
                   ref.invalidate(exerciseListProvider);
                   ref.invalidate(sessionListProvider);
                   ref.invalidate(routineProgressProvider);
+                  ref.invalidate(profileProvider);
                 }
               }
             } else {
@@ -235,6 +237,7 @@ class BackupNotifier extends Notifier<BackupState> with WidgetsBindingObserver {
                     ref.invalidate(exerciseListProvider);
                     ref.invalidate(sessionListProvider);
                     ref.invalidate(routineProgressProvider);
+                    ref.invalidate(profileProvider);
                   }
                 }
               } else {
@@ -245,6 +248,7 @@ class BackupNotifier extends Notifier<BackupState> with WidgetsBindingObserver {
                   ref.invalidate(exerciseListProvider);
                   ref.invalidate(sessionListProvider);
                   ref.invalidate(routineProgressProvider);
+                  ref.invalidate(profileProvider);
                 }
               }
             }
@@ -361,6 +365,7 @@ class BackupNotifier extends Notifier<BackupState> with WidgetsBindingObserver {
       ref.invalidate(exerciseListProvider);
       ref.invalidate(sessionListProvider);
       ref.invalidate(routineProgressProvider);
+      ref.invalidate(profileProvider);
       state = state.copyWith(isDownloading: false, lastSyncAttempt: DateTime.now());
     } else {
       state = state.copyWith(isDownloading: false, errorMessage: 'Falha ao restaurar backup');
