@@ -179,21 +179,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       child: Scaffold(
         appBar: AppBar(
           title: const Text('Meu Treino'),
-          leading: Builder(
-            builder: (context) {
-              return IconButton(
-                icon: const Icon(Icons.arrow_back),
-                onPressed: () {
-                  if (FocusManager.instance.primaryFocus?.hasFocus ?? false) {
-                    FocusManager.instance.primaryFocus?.unfocus();
-                  } else {
-                    // Se não tiver teclado, o comportamento padrão do back button
-                    // pode ser minimizar o app ou o que o SO decidir.
-                  }
-                },
-              );
-            },
-          ),
+          automaticallyImplyLeading: false,
           actions: [
             if (_selectedIndex == 0)
               PopupMenuButton<String>(
@@ -753,6 +739,7 @@ class HistoryTab extends ConsumerWidget {
           ? null
           : AppBar(
               title: const Text('Histórico', style: TextStyle(fontSize: 16)),
+              automaticallyImplyLeading: false,
               actions: [
                 TextButton.icon(
                   onPressed: () {
