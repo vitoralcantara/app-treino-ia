@@ -130,7 +130,11 @@ class GoogleDriveService {
 
       final driveFile = drive.File();
       driveFile.name = 'treino_ia_backup.zip';
-      driveFile.parents = ['appDataFolder'];
+      driveFile.appProperties = {
+        'workouts_count': workouts.length.toString(),
+        'sessions_count': sessions.length.toString(),
+        'timestamp': DateTime.now().toIso8601String(),
+      };
 
       final media = drive.Media(
         Stream.fromIterable([zipData]),
@@ -139,16 +143,12 @@ class GoogleDriveService {
 
       if (fileList.files != null && fileList.files!.isNotEmpty) {
         debugPrint('[BACKUP] Atualizando arquivo existente no Drive...');
-        // Atualizar arquivo existente - NÃO enviar 'parents' no update
         final existingFileId = fileList.files!.first.id!;
-        final updateMetadata = drive.File();
-        updateMetadata.name = 'treino_ia_backup.zip';
-        // No update do v3, não se envia parents no corpo, usa-se parâmetros addParents/removeParents se necessário.
-        // Como o arquivo já está na appDataFolder, basta atualizar o conteúdo e o nome.
-        await driveApi.files.update(updateMetadata, existingFileId, uploadMedia: media);
+        
+        // No update do v3, enviamos o objeto driveFile com o nome e as appProperties
+        await driveApi.files.update(driveFile, existingFileId, uploadMedia: media);
       } else {
         debugPrint('[BACKUP] Criando novo arquivo no Drive...');
-        // Criar novo arquivo - Aqui enviamos 'parents'
         driveFile.parents = ['appDataFolder'];
         await driveApi.files.create(driveFile, uploadMedia: media);
       }
@@ -248,7 +248,7 @@ class GoogleDriveService {
     }
   }
 
-  Future<DateTime?> getLatestBackupDate() async {
+  Future<drive.File?> getLatestBackupFile() async {
     try {
       final driveApi = await _getDriveApi();
       if (driveApi == null) return null;
@@ -256,15 +256,21 @@ class GoogleDriveService {
       final fileList = await driveApi.files.list(
         spaces: 'appDataFolder',
         q: "name = 'treino_ia_backup.zip'",
+        fields: 'files(id, name, modifiedTime, appProperties)',
       );
 
       if (fileList.files == null || fileList.files!.isEmpty) return null;
 
-      return fileList.files!.first.modifiedTime;
+      return fileList.files!.first;
     } catch (e) {
-      debugPrint('[BACKUP] Erro ao buscar data do backup: $e');
+      debugPrint('[BACKUP] Erro ao buscar arquivo do backup: $e');
       return null;
     }
+  }
+
+  Future<DateTime?> getLatestBackupDate() async {
+    final file = await getLatestBackupFile();
+    return file?.modifiedTime;
   }
 
   Future<String> getDatabasePath() async {

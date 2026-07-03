@@ -2,6 +2,7 @@ import 'dart:io';
 import 'dart:async';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:googleapis/drive/v3.dart' as drive;
 import '../services/google_drive_service.dart';
 import '../data/database_helper.dart';
 import 'profile_provider.dart';
@@ -179,16 +180,31 @@ class BackupNotifier extends Notifier<BackupState> with WidgetsBindingObserver {
     state = state.copyWith(isAutoSyncing: true, lastSyncAttempt: DateTime.now());
 
     try {
-      final cloudBackupDate = await _driveService.getLatestBackupDate();
+      final cloudBackupFile = await _driveService.getLatestBackupFile();
+      final cloudBackupDate = cloudBackupFile?.modifiedTime;
       bool didUpload = false;
 
       if (cloudBackupDate == null) {
-        debugPrint('[SYNC] Não há backup na nuvem, fazendo upload...');
-        // Não há backup na nuvem, faz upload
-        await _driveService.uploadBackup();
-        didUpload = true;
+        debugPrint('[SYNC] Não há backup na nuvem visível para este dispositivo, verificando dados locais para upload...');
+        final hasLocalData = await _hasSignificantLocalData();
+        if (hasLocalData) {
+          debugPrint('[SYNC] Dados locais encontrados, fazendo upload para criar backup na nuvem...');
+          await _driveService.uploadBackup();
+          didUpload = true;
+        } else {
+          debugPrint('[SYNC] Nuvem vazia e local vazio. Nada a fazer.');
+        }
       } else {
         debugPrint('[SYNC] Backup na nuvem encontrado: $cloudBackupDate');
+        
+        // Verificar conteúdo da nuvem via appProperties
+        final props = cloudBackupFile?.appProperties ?? {};
+        final cloudWorkouts = int.tryParse(props['workouts_count'] ?? '0') ?? 0;
+        final cloudSessions = int.tryParse(props['sessions_count'] ?? '0') ?? 0;
+        final isCloudSignificant = cloudWorkouts > 0 || cloudSessions > 0;
+        
+        debugPrint('[SYNC] Resumo da nuvem: $cloudWorkouts treinos, $cloudSessions sessões (Significativo: $isCloudSignificant)');
+
         // Verifica qual versão é mais recente
         final localLastModified = await _getLocalDatabaseLastModified();
 
@@ -202,53 +218,40 @@ class BackupNotifier extends Notifier<BackupState> with WidgetsBindingObserver {
           if (timeDifference.abs() > const Duration(minutes: 1)) {
             if (timeDifference.isNegative) {
               debugPrint('[SYNC] Local é mais recente, verificando se há dados locais para upload...');
-              // Verificar se há dados locais significativos antes de sobrescrever a nuvem
               final hasLocalData = await _hasSignificantLocalData();
               if (hasLocalData) {
-                debugPrint('[SYNC] Dados locais encontrados, fazendo upload...');
+                debugPrint('[SYNC] Dados locais significativos encontrados, fazendo upload...');
                 await _driveService.uploadBackup();
                 didUpload = true;
               } else {
-                debugPrint('[SYNC] Local é mais recente mas está vazio. Forçando download da nuvem para recuperar dados.');
-                final success = await _driveService.downloadAndRestoreBackup();
-                if (success) {
-                  ref.invalidate(workoutListProvider);
-                  ref.invalidate(exerciseListProvider);
-                  ref.invalidate(sessionListProvider);
-                  ref.invalidate(routineProgressProvider);
-                  ref.invalidate(profileProvider);
+                debugPrint('[SYNC] Local é mais recente mas está vazio.');
+                if (isCloudSignificant) {
+                   debugPrint('[SYNC] Forçando download da nuvem pois ela contém dados e o local não.');
+                   await _performDownloadAndInvalidate();
                 }
               }
             } else {
-              // Nuvem é mais recente - verifica se é primeira sincronização
-              if (state.lastBackupDate == null) {
-                debugPrint('[SYNC] Primeira sincronização detectada, verificando se há dados locais...');
-                // Verificar se há dados locais significativos antes de sobrescrever
-                final hasLocalData = await _hasSignificantLocalData();
-                if (hasLocalData) {
-                  debugPrint('[SYNC] Dados locais encontrados, fazendo upload em vez de download para proteger dados do usuário');
+              // Nuvem é mais recente
+              debugPrint('[SYNC] Nuvem é mais recente, verificando proteção de dados locais...');
+              final hasLocalData = await _hasSignificantLocalData();
+              
+              if (hasLocalData) {
+                if (isCloudSignificant) {
+                  debugPrint('[SYNC] Local e Nuvem possuem dados. Baixando versão mais recente da nuvem.');
+                  await _performDownloadAndInvalidate();
+                } else {
+                  debugPrint('[SYNC] AVISO: Nuvem é mais recente mas está VAZIA. Local possui dados. Upload para proteger local.');
                   await _driveService.uploadBackup();
                   didUpload = true;
-                } else {
-                  debugPrint('[SYNC] Sem dados locais significativos, fazendo download...');
-                  final success = await _driveService.downloadAndRestoreBackup();
-                  if (success) {
-                    ref.invalidate(workoutListProvider);
-                    ref.invalidate(exerciseListProvider);
-                    ref.invalidate(sessionListProvider);
-                    ref.invalidate(routineProgressProvider);
-                    ref.invalidate(profileProvider);
-                  }
                 }
               } else {
-                debugPrint('[SYNC] Nuvem é mais recente, fazendo download...');
-                final success = await _driveService.downloadAndRestoreBackup();
-                if (success) {
-                  ref.invalidate(workoutListProvider);
-                  ref.invalidate(exerciseListProvider);
-                  ref.invalidate(sessionListProvider);
-                  ref.invalidate(routineProgressProvider);
-                  ref.invalidate(profileProvider);
+                if (isCloudSignificant) {
+                  debugPrint('[SYNC] Local vazio, nuvem com dados. Baixando...');
+                  await _performDownloadAndInvalidate();
+                } else {
+                  debugPrint('[SYNC] Ambos vazios ou irrelevantes. Sincronizando data local via upload.');
+                  await _driveService.uploadBackup();
+                  didUpload = true;
                 }
               }
             }
@@ -257,27 +260,34 @@ class BackupNotifier extends Notifier<BackupState> with WidgetsBindingObserver {
           }
         } else {
           debugPrint('[SYNC] Não consegue determinar data local, fazendo upload por segurança...');
-          // Não consegue determinar, faz upload por segurança
           await _driveService.uploadBackup();
           didUpload = true;
         }
       }
 
-      // Atualiza status - se fez upload, usa data atual (o Drive pode demorar a atualizar modifiedTime)
+      // Atualiza status
       DateTime? lastBackup;
       if (didUpload) {
         lastBackup = DateTime.now();
-        debugPrint('[SYNC] Upload realizado, usando data atual: $lastBackup');
       } else {
         lastBackup = await _driveService.getLatestBackupDate();
-        debugPrint('[SYNC] Sincronização concluída. Último backup: $lastBackup');
       }
       state = state.copyWith(lastBackupDate: lastBackup);
     } catch (e) {
       debugPrint('[SYNC] Erro durante sincronização: $e');
-      // Erro silencioso
     } finally {
       state = state.copyWith(isAutoSyncing: false);
+    }
+  }
+
+  Future<void> _performDownloadAndInvalidate() async {
+    final success = await _driveService.downloadAndRestoreBackup();
+    if (success) {
+      ref.invalidate(workoutListProvider);
+      ref.invalidate(exerciseListProvider);
+      ref.invalidate(sessionListProvider);
+      ref.invalidate(routineProgressProvider);
+      ref.invalidate(profileProvider);
     }
   }
 
@@ -285,14 +295,9 @@ class BackupNotifier extends Notifier<BackupState> with WidgetsBindingObserver {
     try {
       final db = await DatabaseHelper.instance.database;
       final workouts = await db.query('workouts');
-      final exercises = await db.query('exercises');
       final sessions = await db.query('workout_sessions');
 
-      debugPrint('[SYNC] Dados locais: ${workouts.length} treinos, ${exercises.length} exercícios, ${sessions.length} sessões');
-
-      // Considera dados significativos apenas se houver treinos criados ou sessões registradas.
-      // Ignoramos a contagem de exercícios pois o app inicia com 6 exercícios padrão (seed),
-      // o que poderia disparar um upload falso em uma instalação limpa, sobrescrevendo o backup da nuvem.
+      debugPrint('[SYNC] Avaliando significância local: ${workouts.length} treinos, ${sessions.length} sessões');
       return workouts.isNotEmpty || sessions.isNotEmpty;
     } catch (e) {
       debugPrint('[SYNC] Erro ao verificar dados locais: $e');
@@ -348,7 +353,6 @@ class BackupNotifier extends Notifier<BackupState> with WidgetsBindingObserver {
     _lastManualSyncTime = DateTime.now();
     final success = await _driveService.uploadBackup();
     if (success) {
-      // Usa data atual em vez de buscar do Drive (pode demorar a atualizar)
       final lastBackup = DateTime.now();
       state = state.copyWith(isUploading: false, lastBackupDate: lastBackup, lastSyncAttempt: DateTime.now());
     } else {
@@ -362,7 +366,6 @@ class BackupNotifier extends Notifier<BackupState> with WidgetsBindingObserver {
     _lastManualSyncTime = DateTime.now();
     final success = await _driveService.downloadAndRestoreBackup();
     if (success) {
-      // Invalida os providers de dados para recarregar a UI com os dados novos
       ref.invalidate(workoutListProvider);
       ref.invalidate(exerciseListProvider);
       ref.invalidate(sessionListProvider);
@@ -378,8 +381,6 @@ class BackupNotifier extends Notifier<BackupState> with WidgetsBindingObserver {
   Future<void> refreshStatus() async {
     if (state.userEmail != null) {
       final lastBackup = await _driveService.getLatestBackupDate();
-      // Se o Drive retornar null mas temos uma data local, mantém a data local
-      // (pode ser latência do Drive em atualizar modifiedTime)
       if (lastBackup != null || state.lastBackupDate == null) {
         state = state.copyWith(lastBackupDate: lastBackup);
       }

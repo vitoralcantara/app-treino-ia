@@ -661,6 +661,13 @@ class DatabaseHelper {
       await db.execute('PRAGMA wal_checkpoint(FULL);');
       debugPrint('[DB] Checkpoint (execute) executado com sucesso.');
     } catch (e) {
+      // No macOS/iOS, execute pode retornar "not an error" (code 0) como exceção
+      final errorStr = e.toString();
+      if (errorStr.contains('code 0') || errorStr.contains('not an error')) {
+        debugPrint('[DB] Checkpoint (execute) retornou status 0 (sucesso).');
+        return;
+      }
+      
       debugPrint('[DB] Erro no checkpoint (execute), tentando rawQuery: $e');
       try {
         final db = await instance.database;
