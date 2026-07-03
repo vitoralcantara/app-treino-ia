@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -23,7 +24,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   final _weightController = TextEditingController();
   final _heightController = TextEditingController();
   final _limitationsController = TextEditingController();
-  final _apiKeyController = TextEditingController(); // Controlador para a API Key
+  final _apiKeyController = TextEditingController(); 
   
   // Controladores de Medidas
   final _armController = TextEditingController();
@@ -41,11 +42,16 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   final List<String> _experienceOptions = ['Iniciante', 'Intermediário', 'Avançado'];
   final List<String> _goalOptions = ['Hipertrofia (Ganho de Massa)', 'Emagrecimento', 'Força', 'Condicionamento Físico', 'Saúde e Bem-estar'];
 
+  Timer? _debounceTimer;
+  bool _isUpdatingFromSource = false;
+
   @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    final profile = ref.watch(profileProvider);
-    final settings = ref.watch(settingsProvider);
+  void initState() {
+    super.initState();
+    
+    // Inicializar valores dos controladores a partir do provider
+    final profile = ref.read(profileProvider);
+    final settings = ref.read(settingsProvider);
     
     _ageController.text = profile.age;
     _weightController.text = profile.weight;
@@ -60,19 +66,53 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     _thighController.text = profile.thigh;
     _calfController.text = profile.calf;
 
-    // Apenas preenche se o valor existir na lista, caso contrário deixa nulo
-    if (_genderOptions.contains(profile.gender)) {
-      _selectedGender = profile.gender;
-    }
-    if (_experienceOptions.contains(profile.experienceLevel)) {
-      _selectedExperience = profile.experienceLevel;
-    }
-    if (_goalOptions.contains(profile.goal)) {
-      _selectedGoal = profile.goal;
-    }
+    _selectedGender = _genderOptions.contains(profile.gender) ? profile.gender : null;
+    _selectedExperience = _experienceOptions.contains(profile.experienceLevel) ? profile.experienceLevel : null;
+    _selectedGoal = _goalOptions.contains(profile.goal) ? profile.goal : null;
+
+    // Adicionar listeners para auto-save
+    _ageController.addListener(_onFieldChanged);
+    _weightController.addListener(_onFieldChanged);
+    _heightController.addListener(_onFieldChanged);
+    _limitationsController.addListener(_onFieldChanged);
+    _apiKeyController.addListener(_onFieldChanged);
+    _armController.addListener(_onFieldChanged);
+    _chestController.addListener(_onFieldChanged);
+    _waistController.addListener(_onFieldChanged);
+    _hipController.addListener(_onFieldChanged);
+    _thighController.addListener(_onFieldChanged);
+    _calfController.addListener(_onFieldChanged);
   }
 
-  void _saveProfile() {
+  @override
+  void dispose() {
+    _debounceTimer?.cancel();
+    _ageController.dispose();
+    _weightController.dispose();
+    _heightController.dispose();
+    _limitationsController.dispose();
+    _apiKeyController.dispose();
+    _armController.dispose();
+    _chestController.dispose();
+    _waistController.dispose();
+    _hipController.dispose();
+    _thighController.dispose();
+    _calfController.dispose();
+    super.dispose();
+  }
+
+  void _onFieldChanged() {
+    if (_isUpdatingFromSource) return;
+    
+    _debounceTimer?.cancel();
+    _debounceTimer = Timer(const Duration(milliseconds: 1000), () {
+      _performSave();
+    });
+  }
+
+  void _performSave() {
+    if (!mounted) return;
+
     final profile = UserProfile(
       age: _ageController.text,
       weight: _weightController.text,
@@ -88,18 +128,47 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       thigh: _thighController.text,
       calf: _calfController.text,
     );
-    ref.read(profileProvider.notifier).saveProfile(profile);
     
-    // Salvar API Key
-    if (_apiKeyController.text.isNotEmpty) {
-      ref.read(settingsProvider.notifier).saveApiKey(_apiKeyController.text);
-    } else {
-      ref.read(settingsProvider.notifier).clearApiKey();
+    // Apenas salva se houver mudança real para evitar loops
+    final currentProfile = ref.read(profileProvider);
+    if (profile.toJson() != currentProfile.toJson()) {
+      ref.read(profileProvider.notifier).saveProfile(profile);
     }
+    
+    // Salvar API Key se houver mudança
+    final currentApiKey = ref.read(settingsProvider).geminiApiKey ?? '';
+    if (_apiKeyController.text != currentApiKey) {
+      if (_apiKeyController.text.isNotEmpty) {
+        ref.read(settingsProvider.notifier).saveApiKey(_apiKeyController.text);
+      } else {
+        ref.read(settingsProvider.notifier).clearApiKey();
+      }
+    }
+  }
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Perfil salvo com sucesso!')),
-    );
+  void _updateControllersFromProfile(UserProfile profile) {
+    setState(() {
+      _isUpdatingFromSource = true;
+      
+      // Apenas atualiza se o texto for diferente para não perder a posição do cursor
+      if (_ageController.text != profile.age) _ageController.text = profile.age;
+      if (_weightController.text != profile.weight) _weightController.text = profile.weight;
+      if (_heightController.text != profile.height) _heightController.text = profile.height;
+      if (_limitationsController.text != profile.limitations) _limitationsController.text = profile.limitations;
+      
+      if (_armController.text != profile.arm) _armController.text = profile.arm;
+      if (_chestController.text != profile.chest) _chestController.text = profile.chest;
+      if (_waistController.text != profile.waist) _waistController.text = profile.waist;
+      if (_hipController.text != profile.hip) _hipController.text = profile.hip;
+      if (_thighController.text != profile.thigh) _thighController.text = profile.thigh;
+      if (_calfController.text != profile.calf) _calfController.text = profile.calf;
+
+      _selectedGender = _genderOptions.contains(profile.gender) ? profile.gender : null;
+      _selectedExperience = _experienceOptions.contains(profile.experienceLevel) ? profile.experienceLevel : null;
+      _selectedGoal = _goalOptions.contains(profile.goal) ? profile.goal : null;
+      
+      _isUpdatingFromSource = false;
+    });
   }
 
   String _getSyncStatusText(DateTime syncTime) {
@@ -137,6 +206,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 ref.invalidate(sessionListProvider);
                 ref.invalidate(exerciseListProvider);
                 ref.invalidate(routineProgressProvider);
+                ref.invalidate(profileProvider);
                 
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(content: Text(result)),
@@ -169,6 +239,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 ref.invalidate(sessionListProvider);
                 ref.invalidate(exerciseListProvider);
                 ref.invalidate(routineProgressProvider);
+                ref.invalidate(profileProvider);
                 
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(content: Text('Backup restaurado com sucesso do Google Drive!')),
@@ -192,6 +263,20 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     final backupState = ref.watch(backupProvider);
     final settings = ref.watch(settingsProvider);
 
+    // Escutar mudanças externas no perfil (ex: cloud restore) para atualizar controladores
+    ref.listen(profileProvider, (previous, next) {
+      if (!_isUpdatingFromSource) {
+        _updateControllersFromProfile(next);
+      }
+    });
+
+    // Escutar mudanças externas na API Key
+    ref.listen(settingsProvider, (previous, next) {
+      if (next.geminiApiKey != _apiKeyController.text && !_isUpdatingFromSource) {
+        _apiKeyController.text = next.geminiApiKey ?? '';
+      }
+    });
+
     return Padding(
       padding: const EdgeInsets.all(16.0),
       child: SingleChildScrollView(
@@ -205,8 +290,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             ),
             const SizedBox(height: 8),
             const Text(
-              'Estes dados serão enviados para a IA gerar treinos melhores para você.',
-              style: TextStyle(color: Colors.grey),
+              'Estes dados são salvos automaticamente conforme você preenche.',
+              style: TextStyle(color: Colors.grey, fontSize: 12),
             ),
             const SizedBox(height: 20),
             TextField(controller: _ageController, decoration: const InputDecoration(labelText: 'Idade', border: OutlineInputBorder()), keyboardType: TextInputType.number),
@@ -228,6 +313,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 setState(() {
                   _selectedGender = newValue;
                 });
+                _performSave();
               },
             ),
             const SizedBox(height: 10),
@@ -244,6 +330,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 setState(() {
                   _selectedExperience = newValue;
                 });
+                _performSave();
               },
             ),
             const SizedBox(height: 10),
@@ -260,6 +347,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 setState(() {
                   _selectedGoal = newValue;
                 });
+                _performSave();
               },
             ),
             const SizedBox(height: 10),
@@ -319,7 +407,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                           ? null 
                           : () => ref.read(backupProvider.notifier).signIn(),
                         style: ElevatedButton.styleFrom(
-                          minimumSize: const Size.fromHeight(45),
+                          minimumSize: const Size(0, 45),
                           backgroundColor: Colors.white,
                           foregroundColor: Colors.black87,
                         ),
@@ -416,7 +504,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                                   child: CircularProgressIndicator(strokeWidth: 2),
                                 ),
                                 const SizedBox(width: 8),
-                                Text(
+                                const Text(
                                   'Sincronizando...',
                                   style: TextStyle(
                                     fontSize: 12,
@@ -430,7 +518,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                             Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                Icon(
+                                const Icon(
                                   Icons.check_circle,
                                   size: 16,
                                   color: Colors.green,
@@ -641,14 +729,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 style: TextStyle(color: Colors.blue, fontSize: 12, decoration: TextDecoration.underline),
               ),
             ),
-
-            const SizedBox(height: 30),
-            ElevatedButton.icon(
-              icon: const Icon(Icons.save),
-              onPressed: _saveProfile,
-              style: ElevatedButton.styleFrom(minimumSize: const Size.fromHeight(50)),
-              label: const Text('Salvar Perfil'),
-            ),
+            const SizedBox(height: 50),
           ],
         ),
       ),
