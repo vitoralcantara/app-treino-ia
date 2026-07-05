@@ -744,17 +744,25 @@ class _WorkoutExecutionScreenState extends ConsumerState<WorkoutExecutionScreen>
                 suggestedTechnique: exercise.suggestedTechnique,
               );
 
-              // Atualizar no banco de dados (biblioteca global)
-              await ref.read(exerciseListProvider.notifier).updateExercise(updatedExercise);
+              try {
+                // Atualizar no banco de dados (biblioteca global)
+                await ref.read(exerciseListProvider.notifier).updateExercise(updatedExercise);
 
-              if (context.mounted) {
-                setState(() {
-                  final index = _dynamicExercises.indexWhere((e) => e.id == exercise.id);
-                  if (index != -1) {
-                    _dynamicExercises[index] = updatedExercise;
-                  }
-                });
-                Navigator.of(context).pop();
+                if (context.mounted) {
+                  setState(() {
+                    final index = _dynamicExercises.indexWhere((e) => e.id == exercise.id);
+                    if (index != -1) {
+                      _dynamicExercises[index] = updatedExercise;
+                    }
+                  });
+                  Navigator.of(context).pop();
+                }
+              } catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text(e.toString().replaceAll('Exception: ', ''))),
+                  );
+                }
               }
             },
             child: const Text('Salvar'),

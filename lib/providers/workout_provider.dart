@@ -154,16 +154,25 @@ class ExerciseListNotifier extends Notifier<AsyncValue<List<Exercise>>> {
 
   Future<void> addExercise(Exercise exercise) async {
     final db = ref.read(databaseProvider);
-    await db.createExercise(exercise);
-    await _load();
-    _triggerCloudBackup();
+    try {
+      await db.createExercise(exercise);
+      await _load();
+      _triggerCloudBackup();
+    } catch (e) {
+      state = AsyncValue.error(e, StackTrace.current);
+    }
   }
 
   Future<void> updateExercise(Exercise exercise) async {
     final db = ref.read(databaseProvider);
-    await db.updateExercise(exercise);
-    await _load();
-    _triggerCloudBackup();
+    try {
+      await db.updateExercise(exercise);
+      await _load();
+      _triggerCloudBackup();
+    } catch (e) {
+      // Repassar o erro para que a UI possa mostrar um alerta
+      rethrow;
+    }
   }
 
   Future<void> toggleExerciseAvailability(int id, bool isAvailable) async {

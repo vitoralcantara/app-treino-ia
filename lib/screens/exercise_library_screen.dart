@@ -227,12 +227,12 @@ class ExerciseLibraryScreen extends ConsumerWidget {
           actions: [
             TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')),
             ElevatedButton(
-              onPressed: () {
+              onPressed: () async {
                 final updatedEx = Exercise(
                   id: ex.id,
-                  name: nameController.text,
-                  category: categoryController.text,
-                  videoUrl: videoController.text,
+                  name: nameController.text.trim(),
+                  category: categoryController.text.trim(),
+                  videoUrl: videoController.text.trim(),
                   imageUrl: pickedImagePath,
                   instructions: ex.instructions,
                   isAvailable: ex.isAvailable,
@@ -243,8 +243,17 @@ class ExerciseLibraryScreen extends ConsumerWidget {
                   groupId: ex.groupId,
                   suggestedTechnique: ex.suggestedTechnique,
                 );
-                ref.read(exerciseListProvider.notifier).updateExercise(updatedEx);
-                Navigator.pop(context);
+                
+                try {
+                  await ref.read(exerciseListProvider.notifier).updateExercise(updatedEx);
+                  if (context.mounted) Navigator.pop(context);
+                } catch (e) {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text(e.toString().replaceAll('Exception: ', ''))),
+                    );
+                  }
+                }
               },
               child: const Text('Salvar'),
             ),

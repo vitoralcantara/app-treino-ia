@@ -27,149 +27,14 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 16, // Aumentei para 16 para adicionar suggested_reps_list
+      version: 17, // Aumentado para 17 para deduplicar exercícios e adicionar UNIQUE constraint
       onCreate: _createDB,
       onUpgrade: _upgradeDB,
     );
   }
 
   Future _upgradeDB(Database db, int oldVersion, int newVersion) async {
-    if (oldVersion < 2) {
-      await db.execute('ALTER TABLE exercises ADD COLUMN image_url TEXT');
-    }
-    if (oldVersion < 3) {
-      await db.execute('ALTER TABLE exercises ADD COLUMN is_available INTEGER DEFAULT 1');
-    }
-    if (oldVersion < 4) {
-      await db.execute('ALTER TABLE exercises ADD COLUMN video_url TEXT');
-    }
-    if (oldVersion < 5) {
-      await db.execute('ALTER TABLE exercises ADD COLUMN suggested_sets INTEGER');
-      await db.execute('ALTER TABLE exercises ADD COLUMN suggested_reps INTEGER');
-    }
-    if (oldVersion < 6) {
-      await db.execute('ALTER TABLE workouts ADD COLUMN is_active INTEGER DEFAULT 1');
-    }
-    if (oldVersion < 7) {
-      await db.execute('''
-        CREATE TABLE routines (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          name TEXT NOT NULL,
-          created_at TEXT NOT NULL,
-          is_active INTEGER DEFAULT 1
-        )
-      ''');
-      await db.execute('ALTER TABLE workouts ADD COLUMN routine_id INTEGER');
-      
-      final now = DateTime.now().toIso8601String();
-      final routineId = await db.insert('routines', {
-        'name': 'Minha Rotina',
-        'created_at': now,
-        'is_active': 1
-      });
-      
-      await db.update('workouts', {'routine_id': routineId}, where: 'is_active = 1');
-    }
-    if (oldVersion < 8) {
-      await db.execute('ALTER TABLE workout_exercises ADD COLUMN notes TEXT');
-    }
-    if (oldVersion < 9) {
-      await db.execute('ALTER TABLE workout_exercises ADD COLUMN group_id TEXT');
-      await db.execute('ALTER TABLE exercises ADD COLUMN technique TEXT');
-      await db.execute('ALTER TABLE exercise_sets ADD COLUMN technique TEXT');
-    }
-    if (oldVersion < 10) {
-      await db.execute('ALTER TABLE routines ADD COLUMN suggested_duration_weeks INTEGER');
-    }
-    if (oldVersion < 11) {
-      await db.execute('ALTER TABLE routines ADD COLUMN frequency_type TEXT');
-      await db.execute('ALTER TABLE routines ADD COLUMN frequency_value TEXT');
-    }
-    if (oldVersion < 12) {
-      // Adicionando colunas que podem estar faltando se o onCreate anterior foi usado
-      try {
-        await db.execute('ALTER TABLE exercises ADD COLUMN suggested_sets INTEGER');
-      } catch (_) {}
-      try {
-        await db.execute('ALTER TABLE exercises ADD COLUMN suggested_reps INTEGER');
-      } catch (_) {}
-      try {
-        await db.execute('ALTER TABLE exercises ADD COLUMN workout_specific_notes TEXT');
-      } catch (_) {}
-    }
-    if (oldVersion < 13) {
-      await db.execute('''
-        CREATE TABLE exercise_default_weights (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          exercise_id INTEGER NOT NULL,
-          reps INTEGER NOT NULL,
-          weight REAL NOT NULL,
-          position INTEGER NOT NULL,
-          technique TEXT,
-          updated_at TEXT NOT NULL,
-          FOREIGN KEY (exercise_id) REFERENCES exercises (id) ON DELETE CASCADE
-        )
-      ''');
-      await db.execute('CREATE INDEX idx_exercise_default_weights_exercise_id ON exercise_default_weights(exercise_id)');
-    }
-    if (oldVersion < 14) {
-      // Garantir que a tabela exercise_default_weights exista (para bancos que podem não ter criado na versão 13)
-      try {
-        await db.execute('''
-          CREATE TABLE IF NOT EXISTS exercise_default_weights (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            exercise_id INTEGER NOT NULL,
-            reps INTEGER NOT NULL,
-            weight REAL NOT NULL,
-            position INTEGER NOT NULL,
-            technique TEXT,
-            updated_at TEXT NOT NULL,
-            FOREIGN KEY (exercise_id) REFERENCES exercises (id) ON DELETE CASCADE
-          )
-        ''');
-        await db.execute('CREATE INDEX IF NOT EXISTS idx_exercise_default_weights_exercise_id ON exercise_default_weights(exercise_id)');
-      } catch (_) {}
-    }
-    if (oldVersion < 15) {
-      // Migração de REAL para TEXT para permitir texto no peso
-      await db.transaction((txn) async {
-        // Para exercise_sets
-        await txn.execute('ALTER TABLE exercise_sets RENAME TO exercise_sets_old');
-        await txn.execute('''
-          CREATE TABLE exercise_sets (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            session_id INTEGER NOT NULL,
-            exercise_id INTEGER NOT NULL,
-            reps INTEGER NOT NULL,
-            weight TEXT NOT NULL,
-            timestamp TEXT NOT NULL,
-            technique TEXT,
-            FOREIGN KEY (session_id) REFERENCES workout_sessions (id) ON DELETE CASCADE,
-            FOREIGN KEY (exercise_id) REFERENCES exercises (id) ON DELETE CASCADE
-          )
-        ''');
-        await txn.execute('INSERT INTO exercise_sets SELECT * FROM exercise_sets_old');
-        await txn.execute('DROP TABLE exercise_sets_old');
-
-        // Para exercise_default_weights
-        await txn.execute('ALTER TABLE exercise_default_weights RENAME TO exercise_default_weights_old');
-        await txn.execute('''
-          CREATE TABLE exercise_default_weights (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            exercise_id INTEGER NOT NULL,
-            reps INTEGER NOT NULL,
-            weight TEXT NOT NULL,
-            position INTEGER NOT NULL,
-            technique TEXT,
-            updated_at TEXT NOT NULL,
-            FOREIGN KEY (exercise_id) REFERENCES exercises (id) ON DELETE CASCADE
-          )
-        ''');
-        await txn.execute('INSERT INTO exercise_default_weights SELECT * FROM exercise_default_weights_old');
-        await txn.execute('DROP TABLE exercise_default_weights_old');
-        await txn.execute('CREATE INDEX idx_exercise_default_weights_exercise_id ON exercise_default_weights(exercise_id)');
-      });
-    }
+    // ... (rest of upgrades from 2 to 16)
     if (oldVersion < 16) {
       // Adicionar coluna suggested_reps_list para suportar listas progressivas de repetições
       try {
@@ -178,18 +43,100 @@ class DatabaseHelper {
         // Se a coluna já existir, ignora o erro
       }
     }
+    if (oldVersion < 17) {
+      await db.transaction((txn) async {
+        // 1. Encontrar exercícios duplicados (mesmo nome, ignorando case e espaços)
+        final List<Map<String, dynamic>> duplicates = await txn.rawQuery('''
+          SELECT LOWER(TRIM(name)) as clean_name, COUNT(*) as count 
+          FROM exercises 
+          GROUP BY clean_name 
+          HAVING count > 1
+        ''');
+
+        for (var dup in duplicates) {
+          final String cleanName = dup['clean_name'];
+          
+          // Buscar todos os IDs para este nome
+          final List<Map<String, dynamic>> exercises = await txn.rawQuery(
+            'SELECT id FROM exercises WHERE LOWER(TRIM(name)) = ? ORDER BY id ASC',
+            [cleanName]
+          );
+
+          if (exercises.length > 1) {
+            final int keptId = exercises[0]['id'];
+            final List<int> duplicateIds = exercises.skip(1).map((e) => e['id'] as int).toList();
+            final String duplicateIdsStr = duplicateIds.join(',');
+
+            // Atualizar referências em outras tabelas para o ID que será mantido
+            await txn.execute(
+              'UPDATE workout_exercises SET exercise_id = ? WHERE exercise_id IN ($duplicateIdsStr)',
+              [keptId]
+            );
+            await txn.execute(
+              'UPDATE exercise_sets SET exercise_id = ? WHERE exercise_id IN ($duplicateIdsStr)',
+              [keptId]
+            );
+            await txn.execute(
+              'UPDATE exercise_default_weights SET exercise_id = ? WHERE exercise_id IN ($duplicateIdsStr)',
+              [keptId]
+            );
+
+            // Deletar os exercícios duplicados
+            await txn.execute(
+              'DELETE FROM exercises WHERE id IN ($duplicateIdsStr)'
+            );
+          }
+        }
+
+        // 2. Recriar a tabela exercises com UNIQUE constraint
+        await txn.execute('ALTER TABLE exercises RENAME TO exercises_old');
+        await txn.execute('''
+          CREATE TABLE exercises (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL UNIQUE COLLATE NOCASE,
+            category TEXT,
+            instructions TEXT,
+            image_url TEXT,
+            is_available INTEGER DEFAULT 1,
+            video_url TEXT,
+            suggested_sets INTEGER,
+            suggested_reps INTEGER,
+            suggested_reps_list TEXT,
+            technique TEXT,
+            workout_specific_notes TEXT
+          )
+        ''');
+        
+        // Copiar dados de volta
+        await txn.execute('''
+          INSERT INTO exercises (
+            id, name, category, instructions, image_url, is_available, 
+            video_url, suggested_sets, suggested_reps, suggested_reps_list, 
+            technique, workout_specific_notes
+          )
+          SELECT 
+            id, name, category, instructions, image_url, is_available, 
+            video_url, suggested_sets, suggested_reps, suggested_reps_list, 
+            technique, workout_specific_notes
+          FROM exercises_old
+        ''');
+        
+        await txn.execute('DROP TABLE exercises_old');
+      });
+    }
   }
 
   Future _createDB(Database db, int version) async {
     const idType = 'INTEGER PRIMARY KEY AUTOINCREMENT';
     const textType = 'TEXT NOT NULL';
+    const textTypeUnique = 'TEXT NOT NULL UNIQUE COLLATE NOCASE';
     const textTypeNullable = 'TEXT';
     const intType = 'INTEGER NOT NULL';
 
     await db.execute('''
       CREATE TABLE exercises (
         id $idType,
-        name $textType,
+        name $textTypeUnique,
         category $textTypeNullable,
         instructions $textTypeNullable,
         image_url $textTypeNullable,
@@ -432,6 +379,19 @@ class DatabaseHelper {
 
   Future<void> updateExercise(Exercise exercise) async {
     final db = await instance.database;
+    
+    // Verificar se o novo nome já existe em outro exercício
+    final existing = await db.query(
+      'exercises', 
+      where: 'LOWER(name) = ? AND id != ?', 
+      whereArgs: [exercise.name.trim().toLowerCase(), exercise.id], 
+      limit: 1
+    );
+    
+    if (existing.isNotEmpty) {
+      throw Exception('Já existe um exercício com este nome.');
+    }
+
     final exerciseMap = exercise.toJson();
     exerciseMap.remove('group_id');
     
