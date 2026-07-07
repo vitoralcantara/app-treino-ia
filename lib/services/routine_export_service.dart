@@ -69,7 +69,7 @@ class RoutineExportService {
     sb.writeln('Gerado por: Power - App de Treino IA');
     sb.writeln('========================================');
 
-    await Share.share(
+    await SharePlus.share(
       sb.toString(),
       subject: 'Minha Rotina de Treino: ${routine.name}',
     );
@@ -139,7 +139,7 @@ class RoutineExportService {
     sb.writeln('</body></html>');
 
     if (kIsWeb) {
-      await Share.share(
+      await SharePlus.share(
         sb.toString(),
         subject: 'Minha Rotina de Treino: ${routine.name}',
       );
@@ -150,7 +150,7 @@ class RoutineExportService {
 
       await file.writeAsBytes(utf8.encode(sb.toString()));
 
-      await Share.shareXFiles(
+      await SharePlus.shareXFiles(
         [XFile(file.path)],
         subject: 'Minha Rotina de Treino: ${routine.name}',
       );

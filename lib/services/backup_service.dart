@@ -54,7 +54,7 @@ class BackupService {
     
     if (kIsWeb) {
       // No web, podemos usar Share para texto
-      await Share.share(
+      await SharePlus.share(
         jsonString,
         subject: 'Meu Backup de Treinos - Treino IA',
       );
@@ -65,7 +65,7 @@ class BackupService {
       await file.writeAsString(jsonString);
 
       // Abrir menu de compartilhamento
-      await Share.shareXFiles(
+      await SharePlus.shareXFiles(
         [XFile(file.path)],
         text: 'Meu Backup de Treinos - Treino IA',
       );

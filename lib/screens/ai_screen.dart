@@ -259,7 +259,7 @@ Formato Exato:
   Future<void> _copyJsonInstructions() async {
     try {
       if (kIsWeb) {
-        await Share.share(
+        await SharePlus.share(
           _jsonInstructionsText,
           subject: 'Regras de Formatação JSON para Treino IA',
         );
@@ -268,7 +268,7 @@ Formato Exato:
         final file = File('${directory.path}/regras_formatacao_treino_ia.json');
         await file.writeAsString(_jsonInstructionsText);
 
-        await Share.shareXFiles(
+        await SharePlus.shareXFiles(
           [XFile(file.path)],
           text: 'Regras de Formatação JSON para Treino IA',
         );
@@ -285,7 +285,7 @@ Formato Exato:
   Future<void> _downloadJsonInstructions() async {
     try {
       if (kIsWeb) {
-        await Share.share(
+        await SharePlus.share(
           _jsonInstructionsText,
           subject: 'Regras de Formatação para Treino IA',
         );
@@ -294,7 +294,7 @@ Formato Exato:
         final file = File('${directory.path}/regras_formatacao_treino.txt');
         await file.writeAsString(_jsonInstructionsText);
 
-        await Share.shareXFiles(
+        await SharePlus.shareXFiles(
           [XFile(file.path)],
           text: 'Regras de Formatação para Treino IA',
         );
