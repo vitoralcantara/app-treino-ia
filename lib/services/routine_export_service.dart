@@ -69,11 +69,9 @@ class RoutineExportService {
     sb.writeln('Gerado por: Power - App de Treino IA');
     sb.writeln('========================================');
 
-    await SharePlus.instance.share(
-      ShareParams(
-        text: sb.toString(),
-        subject: 'Minha Rotina de Treino: ${routine.name}',
-      ),
+    await Share.share(
+      sb.toString(),
+      subject: 'Minha Rotina de Treino: ${routine.name}',
     );
   }
 
@@ -141,11 +139,9 @@ class RoutineExportService {
     sb.writeln('</body></html>');
 
     if (kIsWeb) {
-      await SharePlus.instance.share(
-        ShareParams(
-          text: sb.toString(),
-          subject: 'Minha Rotina de Treino: ${routine.name}',
-        ),
+      await Share.share(
+        sb.toString(),
+        subject: 'Minha Rotina de Treino: ${routine.name}',
       );
     } else {
       final directory = await getTemporaryDirectory();
@@ -154,11 +150,9 @@ class RoutineExportService {
 
       await file.writeAsBytes(utf8.encode(sb.toString()));
 
-      await SharePlus.instance.share(
-        ShareParams(
-          files: [XFile(file.path)],
-          subject: 'Minha Rotina de Treino: ${routine.name}',
-        ),
+      await Share.shareXFiles(
+        [XFile(file.path)],
+        subject: 'Minha Rotina de Treino: ${routine.name}',
       );
     }
   }

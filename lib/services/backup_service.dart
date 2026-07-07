@@ -53,13 +53,10 @@ class BackupService {
     final String jsonString = jsonEncode(backupData);
     
     if (kIsWeb) {
-      // No web, podemos usar SharePlus para texto ou apenas baixar (mas baixar requer dart:html ou similar)
-      // Por enquanto, vamos apenas compartilhar o texto JSON se for pequeno, ou mostrar mensagem
-      await SharePlus.instance.share(
-        ShareParams(
-          text: jsonString,
-          subject: 'Meu Backup de Treinos - Treino IA',
-        ),
+      // No web, podemos usar Share para texto
+      await Share.share(
+        jsonString,
+        subject: 'Meu Backup de Treinos - Treino IA',
       );
     } else {
       // Salvar em arquivo temporário para compartilhar
@@ -67,12 +64,10 @@ class BackupService {
       final file = File('${directory.path}/treino_ia_backup_${_getFormattedDate()}.json');
       await file.writeAsString(jsonString);
 
-      // Abrir menu de compartilhamento (Usa API atualizada do share_plus v13+)
-      await SharePlus.instance.share(
-        ShareParams(
-          files: [XFile(file.path)],
-          text: 'Meu Backup de Treinos - Treino IA',
-        ),
+      // Abrir menu de compartilhamento
+      await Share.shareXFiles(
+        [XFile(file.path)],
+        text: 'Meu Backup de Treinos - Treino IA',
       );
     }
     

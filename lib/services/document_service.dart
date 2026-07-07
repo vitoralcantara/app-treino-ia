@@ -1,5 +1,4 @@
 import 'dart:io' as io;
-import 'dart:typed_data';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:docx_to_text/docx_to_text.dart';

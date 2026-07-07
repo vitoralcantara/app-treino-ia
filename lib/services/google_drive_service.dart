@@ -235,7 +235,7 @@ class GoogleDriveService {
         if (file.isFile) {
           if (file.name == 'backup.json') {
             metadataJson = utf8.decode(file.content as List<int>);
-            debugPrint('[RESTORE] Metadados encontrados: ${metadataJson!.substring(0, metadataJson.length > 100 ? 100 : metadataJson.length)}...');
+            debugPrint('[RESTORE] Metadados encontrados: ${metadataJson.substring(0, metadataJson.length > 100 ? 100 : metadataJson.length)}...');
           } else if (file.name == 'workout_app.db') {
             final tempDir = await Directory.systemTemp.createTemp();
             dbFile = File(p.join(tempDir.path, 'restore.db'));
