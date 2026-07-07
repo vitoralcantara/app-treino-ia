@@ -14,7 +14,7 @@ class GoogleDriveService {
   GoogleDriveService._internal();
 
   final GoogleSignIn _googleSignIn = GoogleSignIn(
-    clientId: Platform.isIOS || Platform.isMacOS 
+    clientId: !kIsWeb && (Platform.isIOS || Platform.isMacOS)
       ? '894878362751-vmficjmuimccgor35pcdk7nao8htgi99.apps.googleusercontent.com' 
       : null,
     scopes: [
@@ -59,6 +59,10 @@ class GoogleDriveService {
   }
 
   Future<bool> uploadBackup() async {
+    if (kIsWeb) {
+      debugPrint('[BACKUP] Backup para Google Drive não implementado no Web devido a limitações de acesso ao sistema de arquivos.');
+      return false;
+    }
     try {
       debugPrint('[BACKUP] Iniciando processo de backup...');
 
@@ -111,7 +115,7 @@ class GoogleDriveService {
         'version': '2.0',
         'timestamp': timestamp,
         'databaseModified': lastModified.toIso8601String(),
-        'platform': Platform.operatingSystem,
+        'platform': kIsWeb ? 'web' : Platform.operatingSystem,
         'appVersion': '1.0.0',
         'content_summary': {
           'workouts_count': workouts.length,
@@ -179,6 +183,10 @@ class GoogleDriveService {
   }
 
   Future<bool> downloadAndRestoreBackup() async {
+    if (kIsWeb) {
+      debugPrint('[RESTORE] Restore do Google Drive não implementado no Web.');
+      return false;
+    }
     try {
       debugPrint('[RESTORE] Iniciando processo de restore...');
 
@@ -219,6 +227,7 @@ class GoogleDriveService {
       final archive = ZipDecoder().decodeBytes(dataStore);
 
       // Procurar backup.json no ZIP para metadados
+      // ignore: unused_local_variable
       String? metadataJson;
       File? dbFile;
 
@@ -226,7 +235,7 @@ class GoogleDriveService {
         if (file.isFile) {
           if (file.name == 'backup.json') {
             metadataJson = utf8.decode(file.content as List<int>);
-            debugPrint('[RESTORE] Metadados encontrados: ${metadataJson.substring(0, metadataJson.length > 100 ? 100 : metadataJson.length)}...');
+            debugPrint('[RESTORE] Metadados encontrados: ${metadataJson!.substring(0, metadataJson.length > 100 ? 100 : metadataJson.length)}...');
           } else if (file.name == 'workout_app.db') {
             final tempDir = await Directory.systemTemp.createTemp();
             dbFile = File(p.join(tempDir.path, 'restore.db'));

@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
+import 'package:sqflite_common_ffi_web/sqflite_ffi_web.dart';
 import '../models/exercise.dart';
 import '../models/workout.dart';
 import '../models/workout_session.dart';
@@ -22,15 +23,27 @@ class DatabaseHelper {
   }
 
   Future<Database> _initDB(String filePath) async {
-    final dbPath = await getDatabasesPath();
-    final path = join(dbPath, filePath);
+    if (kIsWeb) {
+      final factory = databaseFactoryFfiWeb;
+      return await factory.openDatabase(
+        filePath,
+        options: OpenDatabaseOptions(
+          version: 17,
+          onCreate: _createDB,
+          onUpgrade: _upgradeDB,
+        ),
+      );
+    } else {
+      final dbPath = await getDatabasesPath();
+      final path = join(dbPath, filePath);
 
-    return await openDatabase(
-      path,
-      version: 17, // Aumentado para 17 para deduplicar exercícios e adicionar UNIQUE constraint
-      onCreate: _createDB,
-      onUpgrade: _upgradeDB,
-    );
+      return await openDatabase(
+        path,
+        version: 17,
+        onCreate: _createDB,
+        onUpgrade: _upgradeDB,
+      );
+    }
   }
 
   Future _upgradeDB(Database db, int oldVersion, int newVersion) async {
@@ -640,6 +653,8 @@ class DatabaseHelper {
   }
 
   Future<void> overwriteDatabase(String newPath) async {
+    if (kIsWeb) return;
+    
     await closeDatabase();
     
     final dbPath = await getDatabasePath();

@@ -61,6 +61,7 @@ dependencies:
   extension_google_sign_in_as_googleapis_auth: ^2.0.13
   receive_sharing_intent: ^1.8.0
   archive: ^3.6.1
+  sqflite_common_ffi_web: ^1.1.1
 
 dev_dependencies:
   flutter_test:

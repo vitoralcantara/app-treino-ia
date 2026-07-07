@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -51,18 +52,29 @@ class BackupService {
 
     final String jsonString = jsonEncode(backupData);
     
-    // Salvar em arquivo temporário para compartilhar
-    final directory = await getTemporaryDirectory();
-    final file = File('${directory.path}/treino_ia_backup_${_getFormattedDate()}.json');
-    await file.writeAsString(jsonString);
+    if (kIsWeb) {
+      // No web, podemos usar SharePlus para texto ou apenas baixar (mas baixar requer dart:html ou similar)
+      // Por enquanto, vamos apenas compartilhar o texto JSON se for pequeno, ou mostrar mensagem
+      await SharePlus.instance.share(
+        ShareParams(
+          text: jsonString,
+          subject: 'Meu Backup de Treinos - Treino IA',
+        ),
+      );
+    } else {
+      // Salvar em arquivo temporário para compartilhar
+      final directory = await getTemporaryDirectory();
+      final file = File('${directory.path}/treino_ia_backup_${_getFormattedDate()}.json');
+      await file.writeAsString(jsonString);
 
-    // Abrir menu de compartilhamento (Usa API atualizada do share_plus v13+)
-    await SharePlus.instance.share(
-      ShareParams(
-        files: [XFile(file.path)],
-        text: 'Meu Backup de Treinos - Treino IA',
-      ),
-    );
+      // Abrir menu de compartilhamento (Usa API atualizada do share_plus v13+)
+      await SharePlus.instance.share(
+        ShareParams(
+          files: [XFile(file.path)],
+          text: 'Meu Backup de Treinos - Treino IA',
+        ),
+      );
+    }
     
     // Atualizar data do último backup
     await _updateLastBackupDate();
@@ -75,18 +87,35 @@ class BackupService {
         allowedExtensions: ['json'],
       );
 
-      if (result == null || result.files.single.path == null) return null;
+      if (result == null || result.files.single.path == null && result.files.single.bytes == null) return null;
 
-      return await importBackupFromFile(result.files.single.path!);
+      if (kIsWeb) {
+        if (result.files.single.bytes != null) {
+          final jsonString = utf8.decode(result.files.single.bytes!);
+          return await _importBackupFromJson(jsonString);
+        }
+        return "Erro: Bytes do arquivo não disponíveis no web.";
+      } else {
+        return await importBackupFromFile(result.files.single.path!);
+      }
     } catch (e) {
       return "Erro ao restaurar backup: $e";
     }
   }
 
   Future<String?> importBackupFromFile(String filePath) async {
+    if (kIsWeb) return "Importação de arquivo por path não suportada no Web.";
     try {
       final pickedFile = File(filePath);
       final jsonString = await pickedFile.readAsString();
+      return await _importBackupFromJson(jsonString);
+    } catch (e) {
+      return "Erro ao restaurar backup: $e";
+    }
+  }
+
+  Future<String?> _importBackupFromJson(String jsonString) async {
+    try {
       final Map<String, dynamic> backupData = jsonDecode(jsonString);
 
       // Validação básica de formato

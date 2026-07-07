@@ -1,4 +1,6 @@
 import 'dart:io';
+import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -41,7 +43,8 @@ class _AiScreenContentState extends ConsumerState<AiScreenContent> {
   final _responseController = TextEditingController();
   String _generatedPrompt = '';
   bool _isLoading = false;
-  final List<File> _selectedFiles = [];
+  // No web, guardamos bytes + nome. No mobile, File.
+  final List<dynamic> _selectedFiles = [];
 
   // Keys para o tutorial
   final GlobalKey _step1Key = GlobalKey();
@@ -70,11 +73,19 @@ class _AiScreenContentState extends ConsumerState<AiScreenContent> {
       final result = await FilePicker.pickFiles(
         type: FileType.custom,
         allowedExtensions: ['pdf', 'docx', 'xlsx', 'xls', 'txt'],
+        withData: kIsWeb, // Necessário no Web para obter os bytes
       );
 
       if (result != null) {
         setState(() {
-          _selectedFiles.addAll(result.files.where((file) => file.path != null).map((file) => File(file.path!)));
+          if (kIsWeb) {
+            _selectedFiles.addAll(result.files.map((f) => {
+              'name': f.name,
+              'bytes': f.bytes,
+            }));
+          } else {
+            _selectedFiles.addAll(result.files.where((file) => file.path != null).map((file) => File(file.path!)));
+          }
         });
       }
     } catch (e) {
@@ -247,16 +258,25 @@ Formato Exato:
 
   Future<void> _copyJsonInstructions() async {
     try {
-      final directory = await getTemporaryDirectory();
-      final file = File('${directory.path}/regras_formatacao_treino_ia.json');
-      await file.writeAsString(_jsonInstructionsText);
+      if (kIsWeb) {
+        await SharePlus.instance.share(
+          ShareParams(
+            text: _jsonInstructionsText,
+            subject: 'Regras de Formatação JSON para Treino IA',
+          ),
+        );
+      } else {
+        final directory = await getTemporaryDirectory();
+        final file = File('${directory.path}/regras_formatacao_treino_ia.json');
+        await file.writeAsString(_jsonInstructionsText);
 
-      await SharePlus.instance.share(
-        ShareParams(
-          files: [XFile(file.path)],
-          text: 'Regras de Formatação JSON para Treino IA',
-        ),
-      );
+        await SharePlus.instance.share(
+          ShareParams(
+            files: [XFile(file.path)],
+            text: 'Regras de Formatação JSON para Treino IA',
+          ),
+        );
+      }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -268,16 +288,25 @@ Formato Exato:
 
   Future<void> _downloadJsonInstructions() async {
     try {
-      final directory = await getTemporaryDirectory();
-      final file = File('${directory.path}/regras_formatacao_treino.txt');
-      await file.writeAsString(_jsonInstructionsText);
+      if (kIsWeb) {
+        await SharePlus.instance.share(
+          ShareParams(
+            text: _jsonInstructionsText,
+            subject: 'Regras de Formatação para Treino IA',
+          ),
+        );
+      } else {
+        final directory = await getTemporaryDirectory();
+        final file = File('${directory.path}/regras_formatacao_treino.txt');
+        await file.writeAsString(_jsonInstructionsText);
 
-      await SharePlus.instance.share(
-        ShareParams(
-          files: [XFile(file.path)],
-          text: 'Regras de Formatação para Treino IA',
-        ),
-      );
+        await SharePlus.instance.share(
+          ShareParams(
+            files: [XFile(file.path)],
+            text: 'Regras de Formatação para Treino IA',
+          ),
+        );
+      }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -300,12 +329,18 @@ Formato Exato:
       final result = await FilePicker.pickFiles(
         type: FileType.custom,
         allowedExtensions: ['json', 'txt'],
+        withData: kIsWeb,
       );
 
-      if (result == null || result.files.single.path == null) return;
+      if (result == null || result.files.single.path == null && result.files.single.bytes == null) return;
 
-      final pickedFile = File(result.files.single.path!);
-      final content = await pickedFile.readAsString();
+      String content;
+      if (kIsWeb) {
+        content = utf8.decode(result.files.single.bytes!);
+      } else {
+        final pickedFile = File(result.files.single.path!);
+        content = await pickedFile.readAsString();
+      }
       await _processJsonImport(content);
     } catch (e) {
       if (mounted) {
@@ -481,11 +516,17 @@ Formato Exato:
                     itemCount: _selectedFiles.length,
                     itemBuilder: (context, index) {
                       final file = _selectedFiles[index];
+                      String fileName = '';
+                      if (kIsWeb) {
+                        fileName = file['name'];
+                      } else {
+                        fileName = (file as File).path.split('/').last;
+                      }
                       return ListTile(
                         dense: true,
                         leading: const Icon(Icons.insert_drive_file, size: 20),
                         title: Text(
-                          file.path.split('/').last,
+                          fileName,
                           style: const TextStyle(fontSize: 12),
                           maxLines: null,
                           softWrap: true,

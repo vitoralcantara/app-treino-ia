@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'dart:async';
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -1046,18 +1047,25 @@ class _WorkoutExecutionScreenState extends ConsumerState<WorkoutExecutionScreen>
                                                             child: const Icon(Icons.broken_image, color: Colors.grey),
                                                           ),
                                                         )
-                                                      : Image.file(
-                                                          File(exercise.imageUrl!),
-                                                          width: 60,
-                                                          height: 60,
-                                                          fit: BoxFit.cover,
-                                                          errorBuilder: (context, error, stackTrace) => Container(
-                                                            width: 60,
-                                                            height: 60,
-                                                            color: Colors.grey.shade800,
-                                                            child: const Icon(Icons.broken_image, color: Colors.grey),
-                                                          ),
-                                                        ),
+                                                      : (!kIsWeb 
+                                                          ? Image.file(
+                                                              File(exercise.imageUrl!),
+                                                              width: 60,
+                                                              height: 60,
+                                                              fit: BoxFit.cover,
+                                                              errorBuilder: (context, error, stackTrace) => Container(
+                                                                width: 60,
+                                                                height: 60,
+                                                                color: Colors.grey.shade800,
+                                                                child: const Icon(Icons.broken_image, color: Colors.grey),
+                                                              ),
+                                                            )
+                                                          : Container(
+                                                              width: 60,
+                                                              height: 60,
+                                                              color: Colors.grey.shade800,
+                                                              child: const Icon(Icons.image, color: Colors.grey),
+                                                            )),
                                                 ),
                                               ),
                                             Expanded(

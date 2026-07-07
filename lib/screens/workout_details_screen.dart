@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
@@ -189,12 +190,19 @@ class WorkoutDetailsScreen extends ConsumerWidget {
                   padding: const EdgeInsets.only(bottom: 8.0),
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(8.0),
-                    child: Image.file(
-                      File(pickedImagePath!),
-                      height: 100,
-                      width: double.infinity,
-                      fit: BoxFit.cover,
-                    ),
+                    child: !kIsWeb 
+                      ? Image.file(
+                          File(pickedImagePath!),
+                          height: 100,
+                          width: double.infinity,
+                          fit: BoxFit.cover,
+                        )
+                      : Container(
+                          height: 100,
+                          width: double.infinity,
+                          color: Colors.grey.shade800,
+                          child: const Icon(Icons.image, color: Colors.grey),
+                        ),
                   ),
                 ),
               ElevatedButton.icon(

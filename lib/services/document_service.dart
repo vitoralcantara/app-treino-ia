@@ -1,5 +1,7 @@
-import 'dart:io';
+import 'dart:io' as io;
 import 'dart:typed_data';
+import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:docx_to_text/docx_to_text.dart';
 import 'package:excel/excel.dart';
 import 'package:path/path.dart' as p;
@@ -21,20 +23,32 @@ class ProcessedDocument {
 }
 
 class DocumentService {
-  Future<ProcessedDocument> processFile(File file) async {
-    final fileName = p.basename(file.path);
-    final extension = p.extension(file.path).toLowerCase();
+  Future<ProcessedDocument> processFile(dynamic file) async {
+    String fileName;
+    String extension;
+    Uint8List bytes;
+
+    if (!kIsWeb && file is io.File) {
+      fileName = p.basename(file.path);
+      extension = p.extension(file.path).toLowerCase();
+      bytes = await file.readAsBytes();
+    } else if (file is Map<String, dynamic> && file.containsKey('bytes') && file.containsKey('name')) {
+      // Formato customizado para web
+      fileName = file['name'];
+      extension = p.extension(fileName).toLowerCase();
+      bytes = file['bytes'];
+    } else {
+      throw Exception('Tipo de arquivo não suportado ou plataforma incompatível.');
+    }
 
     try {
       if (extension == '.pdf') {
-        final bytes = await file.readAsBytes();
         return ProcessedDocument(
           fileName: fileName,
           type: DocumentType.pdf,
           bytes: bytes,
         );
       } else if (extension == '.docx') {
-        final bytes = await file.readAsBytes();
         final text = docxToText(bytes);
         return ProcessedDocument(
           fileName: fileName,
@@ -42,7 +56,6 @@ class DocumentService {
           textContent: text,
         );
       } else if (extension == '.xlsx' || extension == '.xls') {
-        final bytes = await file.readAsBytes();
         final excel = Excel.decodeBytes(bytes);
         StringBuffer sb = StringBuffer();
         
@@ -61,7 +74,7 @@ class DocumentService {
           textContent: sb.toString(),
         );
       } else if (extension == '.txt') {
-        final text = await file.readAsString();
+        final text = utf8.decode(bytes);
         return ProcessedDocument(
           fileName: fileName,
           type: DocumentType.txt,

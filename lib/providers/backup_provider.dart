@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../services/google_drive_service.dart';
@@ -170,6 +171,7 @@ class BackupNotifier extends Notifier<BackupState> with WidgetsBindingObserver {
   }
 
   Future<void> _performAutoSync() async {
+    if (kIsWeb) return; // Sincronização automática via DB file não suportada no Web
     if (state.isAutoSyncing) {
       debugPrint('[SYNC] Já está sincronizando, ignorando...');
       return; // Evita sincronizações simultâneas

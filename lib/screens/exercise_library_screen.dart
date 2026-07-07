@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -202,7 +203,9 @@ class ExerciseLibraryScreen extends ConsumerWidget {
                       borderRadius: BorderRadius.circular(8),
                       child: pickedImagePath!.startsWith('http')
                           ? Image.network(pickedImagePath!, height: 100, width: 100, fit: BoxFit.cover)
-                          : Image.file(File(pickedImagePath!), height: 100, width: 100, fit: BoxFit.cover),
+                          : (!kIsWeb 
+                              ? Image.file(File(pickedImagePath!), height: 100, width: 100, fit: BoxFit.cover)
+                              : const Icon(Icons.image, size: 100)),
                     ),
                   ),
                 ElevatedButton.icon(

@@ -1,5 +1,6 @@
-import 'dart:io';
+import 'dart:io' as io;
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:intl/intl.dart';
 import 'package:path_provider/path_provider.dart';
@@ -139,18 +140,27 @@ class RoutineExportService {
     sb.writeln('</footer>');
     sb.writeln('</body></html>');
 
-    final directory = await getTemporaryDirectory();
-    final fileName = 'Rotina_${routine.name.replaceAll(' ', '_')}.doc';
-    final file = File('${directory.path}/$fileName');
+    if (kIsWeb) {
+      await SharePlus.instance.share(
+        ShareParams(
+          text: sb.toString(),
+          subject: 'Minha Rotina de Treino: ${routine.name}',
+        ),
+      );
+    } else {
+      final directory = await getTemporaryDirectory();
+      final fileName = 'Rotina_${routine.name.replaceAll(' ', '_')}.doc';
+      final file = io.File('${directory.path}/$fileName');
 
-    await file.writeAsBytes(utf8.encode(sb.toString()));
+      await file.writeAsBytes(utf8.encode(sb.toString()));
 
-    await SharePlus.instance.share(
-      ShareParams(
-        files: [XFile(file.path)],
-        subject: 'Minha Rotina de Treino: ${routine.name}',
-      ),
-    );
+      await SharePlus.instance.share(
+        ShareParams(
+          files: [XFile(file.path)],
+          subject: 'Minha Rotina de Treino: ${routine.name}',
+        ),
+      );
+    }
   }
 
   static String _getFrequencyLabel(Routine routine) {
